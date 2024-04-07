@@ -6,9 +6,10 @@ build:
 	gcc ./src/test_generator.c -o ./bin/test_generator.out
 
 clean:
-	rm -f ./bin/*.out  ./bin/processes.txt
+	rm -f ./bin/*.out  ./processes.txt
 
 all: clean build
 
 run:
+	./bin/test_generator.out
 	./bin/process_generator.out
