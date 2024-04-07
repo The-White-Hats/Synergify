@@ -1,14 +1,14 @@
 build:
-	gcc process_generator.c -o process_generator.out
-	gcc clk.c -o clk.out
-	gcc scheduler.c -o scheduler.out
-	gcc process.c -o process.out
-	gcc test_generator.c -o test_generator.out
+	gcc ./src/process_generator.c -o ./bin/process_generator.out
+	gcc ./src/clk.c -o ./bin/clk.out
+	gcc ./src/scheduler.c -o ./bin/scheduler.out
+	gcc ./src/process.c -o ./bin/process.out
+	gcc ./src/test_generator.c -o ./bin/test_generator.out
 
 clean:
-	rm -f *.out  processes.txt
+	rm -f ./bin/*.out  ./bin/processes.txt
 
 all: clean build
 
 run:
-	./process_generator.out
+	./bin/process_generator.out
