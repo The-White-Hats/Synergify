@@ -1,0 +1,12 @@
+version: '3'
+
+services:
+  synergify:
+    container_name: synergify-container
+    image: synergify-image
+    volumes:
+      - ./../src:/home/synergify/src
+      - ./../bin:/home/synergify/bin
+    command: /bin/bash
+    stdin_open: true
+    tty: true

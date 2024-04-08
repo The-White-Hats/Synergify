@@ -1,0 +1,15 @@
+# Directories
+.vscode/
+docker/
+docs/
+
+# Thre ignoring files
+.gitignore
+.dockerignore
+
+# Liscense and markdown files
+LICENSE
+*.md
+
+# docker initializing script
+docker.sh
