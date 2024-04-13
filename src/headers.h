@@ -23,7 +23,15 @@ typedef short bool;
 int * shmaddr;                 //
 //===============================
 
-
+///==============================
+// Structs & Enums
+typedef struct process_info_s {
+    int id;
+    int arrival;
+    int runtime;
+    int priority;
+} process_info_t ;
+///==============================
 
 int getClk()
 {
