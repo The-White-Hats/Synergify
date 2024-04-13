@@ -31,6 +31,12 @@ typedef struct process_info_s {
     int runtime;
     int priority;
 } process_info_t ;
+
+typedef enum {
+    HPF = 1,
+    SRTN,
+    RR
+} scheduling_algo;
 ///==============================
 
 int getClk()
