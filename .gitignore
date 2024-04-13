@@ -1,2 +1,8 @@
+# folders
 .vscode
+
+# executable
 *.out
+
+# files
+processes.txt

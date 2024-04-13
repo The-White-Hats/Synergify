@@ -7,6 +7,7 @@ services:
     volumes:
       - ./../src:/home/synergify/src
       - ./../bin:/home/synergify/bin
+      - ./../processes.txt:/home/synergify/processes.txt
     command: /bin/bash
     stdin_open: true
     tty: true
