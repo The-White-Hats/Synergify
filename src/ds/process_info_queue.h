@@ -5,6 +5,8 @@ typedef struct process_info_queue_s process_info_queue_t;
 
 /**
  * create_queue - function that returns a pointer to an initialized process_info_queue_t
+ *
+ * Return: A pointer to the newly created process information queue, or NULL if memory allocation fails
 */
 process_info_queue_t* create_queue();
 
@@ -12,6 +14,8 @@ process_info_queue_t* create_queue();
  * enqueue - function to insert a new element into the process_info_queue_t
  * @queue: the queue to insert into 
  * @process: the process to insert at the end fo the queue
+ *
+ * Return: true if the process is enqueued successfully, otherwise false
 */
 bool enqueue(process_info_queue_t* queue, process_info_t* process);
 
