@@ -64,7 +64,7 @@ void push(pqueue_t **head, void *process, int priority)
   else
   {
     pqueue_t *temp = *head;
-    while (temp->next != NULL && temp->next->priority =< priority)
+    while (temp->next != NULL && temp->next->priority <= priority)
       temp = temp->next;
     newNode->next = temp->next;
     temp->next = newNode;
