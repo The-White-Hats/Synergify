@@ -77,9 +77,9 @@ void SRTN(pqueue_t **head, rprocess_t *current_process)
 
     if (current_process == NULL || *head->priority < current_process->priority)
     {
-        updateCurrentProcess(head, current_process);
         if (*head->priority < current_process->priority)
             push(head, current_process->process, current_process->priority);
+        updateCurrentProcess(head, current_process);
     }
     current_process->priority--;
     if (--current_process->process->remaining_time == 0)
