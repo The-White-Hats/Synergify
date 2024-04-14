@@ -22,6 +22,41 @@ typedef short bool;
 int *shmaddr; //
 //===============================
 
+///==============================
+// Structs & Enums
+/**
+ * struct process_info_s - Structure for holding process information
+ * @id: Unique identifier for the process
+ * @arrival: Arrival time of the process
+ * @runtime: Runtime of the process
+ * @priority: Priority of the process
+ *
+ * Description: Structure representing process information including its ID, arrival time,
+ *              runtime, and priority.
+*/
+typedef struct process_info_s {
+    int id;
+    int arrival;
+    int runtime;
+    int priority;
+} process_info_t ;
+
+/**
+ * scheduling_algo - Enumeration representing different scheduling algorithms
+ * @HPF: Highest Priority First
+ * @SRTN: Shortest Remaining Time Next
+ * @RR: Round Robin
+ *
+ * Description: Enumeration representing different scheduling algorithms including
+ *              Highest Priority First, Shortest Remaining Time Next, and Round Robin.
+*/
+typedef enum {
+    HPF = 1,
+    SRTN,
+    RR
+} scheduling_algo;
+///==============================
+
 int getClk()
 {
     return *shmaddr;
