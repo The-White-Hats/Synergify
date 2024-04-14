@@ -1,21 +1,6 @@
 #include "headers.h"
 
 /**
- * struct queue_s - linked list representation of a priority queue
- * @process: Pointer to the process
- * @priority: Value of the node priority
- * @next: Pointer to the next element of the stack (or queue)
- *
- * Description: doubly linked list node structure
- */
-typedef struct pqueue_s
-{
-  void *process;
-  int priority;
-  struct stack_s *next;
-} pqueue_t;
-
-/**
  * createNode - Creates a new node for the priority queue.
  * 
  * @param process: Pointer to the process data to be stored in the node.
