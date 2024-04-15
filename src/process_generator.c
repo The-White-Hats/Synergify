@@ -1,10 +1,10 @@
 #include "headers.h"
-#include "./ds/process_info_queue.h"
+#include "./ds/queue.h"
 
 ///==============================
 // functions
 void clearResources(int);
-void read_input_file(process_info_queue_t *);
+void read_input_file(queue *);
 void get_scheduling_algo(scheduling_algo*, int*);
 ///==============================
 
@@ -12,7 +12,7 @@ int main(int argc, char *argv[])
 {
     ///==============================
     // data
-    process_info_queue_t *queue = malloc(sizeof(process_info_queue_t));
+    queue *processes_queue = create_queue();
     scheduling_algo algo;
     int quantum = 0;
     ///==============================
@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
     signal(SIGINT, clearResources);
     // TODO Initialization
     // 1. Read the input files.
-    read_input_file(queue);
+    read_input_file(processes_queue);
 
     // 2. Ask the user for the chosen scheduling algorithm and its parameters, if there are any.
     get_scheduling_algo(&algo, &quantum);
@@ -46,7 +46,7 @@ void clearResources(int signum)
 /**
  * read_input_file - to read the processes and their parameters from a text file
  */
-void read_input_file(process_info_queue_t *queue)
+void read_input_file(queue *processes_queue)
 {
     FILE *input_file = fopen("./processes.txt", "r");
     if (!input_file)
@@ -63,7 +63,7 @@ void read_input_file(process_info_queue_t *queue)
         process_info_t *process = malloc(sizeof(process_info_t));
         sscanf(buffer, "%d %d %d %d", &(process->id),
                &(process->arrival), &(process->runtime), &(process->priority));
-        enqueue(queue, process);
+        enqueue(processes_queue, process);
     }
     fclose(input_file);
 }

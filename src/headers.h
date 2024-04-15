@@ -1,3 +1,6 @@
+#ifndef SAMPLE_HEADER_H
+#define SAMPLE_HEADER_H
+
 #include <stdio.h> //if you don't use scanf/printf change this include
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -24,6 +27,7 @@ int *shmaddr; //
 
 ///==============================
 // Structs & Enums
+
 /**
  * struct process_info_s - Structure for holding process information
  * @id: Unique identifier for the process
@@ -34,12 +38,14 @@ int *shmaddr; //
  * Description: Structure representing process information including its ID, arrival time,
  *              runtime, and priority.
 */
-typedef struct process_info_s {
+typedef struct process_info_s
+{
+
     int id;
     int arrival;
     int runtime;
     int priority;
-} process_info_t ;
+} process_info_t;
 
 /**
  * scheduling_algo - Enumeration representing different scheduling algorithms
@@ -51,6 +57,23 @@ typedef struct process_info_s {
  *              Highest Priority First, Shortest Remaining Time Next, and Round Robin.
 */
 typedef enum {
+    HPF = 1,
+    SRTN,
+    RR
+} scheduling_algo;
+///==============================
+
+/**
+ * scheduling_algo - Enumeration representing different scheduling algorithms
+ * @HPF: Highest Priority First
+ * @SRTN: Shortest Remaining Time Next
+ * @RR: Round Robin
+ *
+ * Description: Enumeration representing different scheduling algorithms including
+ *              Highest Priority First, Shortest Remaining Time Next, and Round Robin.
+*/
+typedef enum
+{
     HPF = 1,
     SRTN,
     RR
@@ -193,3 +216,4 @@ void RR(pqueue_t **head, rprocess_t *current_process);
  * checks for the remaining time to send a termination signal to the schedular.
  */
 void SRTN(pqueue_t **head, rprocess_t *current_process);
+#endif /* SAMPLE_HEADER_H */
