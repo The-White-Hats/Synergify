@@ -40,12 +40,28 @@ int *shmaddr; //
 */
 typedef struct process_info_s
 {
+
     int id;
     int arrival;
     int runtime;
     int priority;
 } process_info_t;
 
+/**
+ * scheduling_algo - Enumeration representing different scheduling algorithms
+ * @HPF: Highest Priority First
+ * @SRTN: Shortest Remaining Time Next
+ * @RR: Round Robin
+ *
+ * Description: Enumeration representing different scheduling algorithms including
+ *              Highest Priority First, Shortest Remaining Time Next, and Round Robin.
+*/
+typedef enum {
+    HPF = 1,
+    SRTN,
+    RR
+} scheduling_algo;
+///==============================
 
 /**
  * scheduling_algo - Enumeration representing different scheduling algorithms
@@ -103,4 +119,101 @@ void destroyClk(bool terminateAll)
     }
 }
 
+//=======================================Priority Queue=========================================//
+
+/**
+ * struct queue_s - linked list representation of a priority queue
+ * @process: Pointer to the process
+ * @priority: Value of the node priority
+ * @next: Pointer to the next element of the stack (or queue)
+ *
+ * Description: doubly linked list node structure
+ */
+typedef struct pqueue_s
+{
+    void *process;
+    int priority;
+    struct stack_s *next;
+} pqueue_t;
+
+/**
+ * createNode - Creates a new node for the priority queue.
+ *
+ * @param process: Pointer to the process data to be stored in the node.
+ * @param priority: Priority associated with the process.
+ * @return Pointer to the newly created node.
+ *
+ * Allocates memory for a new node in the priority queue and initializes its data fields.
+ * If memory allocation fails, an error message is printed, and the program exits.
+ */
+pqueue_t *createNode(void *process, int priority);
+
+/**
+ * push - Inserts a new process into the priority queue based on its priority.
+ *
+ * @param head: Pointer to the pointer to the head of the priority queue.
+ * @param process: Pointer to the process data to be inserted.
+ * @param priority: Priority associated with the process.
+ *
+ * Inserts a new process into the priority queue in ascending order of priority.
+ * If the priority queue is empty, the new process becomes the head of the queue.
+ * If the priority queue is not empty, the new process is inserted at the appropriate position
+ * to maintain the ascending order of priority.
+ */
+void push(pqueue_t **head, void *process, int priority);
+
+/**
+ * pop - Removes and frees the node at the front of the priority queue.
+ *
+ * @param head: Pointer to the pointer to the head of the priority queue.
+ *
+ * Removes and frees the node at the front of the priority queue.
+ * If the priority queue is empty, an error message is printed to stderr,
+ * and the program exits with failure status.
+ */
+void pop(pqueue_t **head);
+
+//=======================================Scheduler=========================================//
+
+/**
+ * struct rprocess_s - current running process
+ * @process: Pointer to the process
+ * @priority: Value of the node priority
+ *
+ * Description: save the info of the current running process
+ */
+typedef struct rprocess_s
+{
+    void *process;
+    int priority;
+} rprocess_t;
+
+
+
+
+
+/**
+ * RR - Runs the Round Robin algorithm
+ *
+ * @param head: Pointer to the pointer to the head of the priority queue.
+ * @param current_process: Pointer to the current running process by the cpu.
+ * checks for null value for queue or the head of the queue
+ * check if their is a running process to push it back and take a new one or take a new one immediately
+ * update the current_process data
+ * checks for the remaining time to send a termination signal to the schedular
+ */
+void RR(pqueue_t **head, rprocess_t *current_process);
+
+/**
+ * SRTN - Runs the Round Robin algorithm
+ *
+ * @param head: Pointer to the pointer to the head of the priority queue.
+ * @param current_process: Pointer to the current running process by the cpu.
+ * checks for null value for queue or the head of the queue.
+ * if their is no running process it gets one from the queue.
+ * else if a new process came but with less remaining time "which is the priority here" we switch between them and push the current to the queue again.
+ * update the priority of the current process as it represent the remaining time of the process.
+ * checks for the remaining time to send a termination signal to the schedular.
+ */
+void SRTN(pqueue_t **head, rprocess_t *current_process);
 #endif /* SAMPLE_HEADER_H */
