@@ -1,19 +1,20 @@
+#pragma once
 /**
- * process_info_queue_t - queue for the process_info_t
+ * queue - queue for the process_info_t
 */
-typedef struct process_info_queue_s process_info_queue_t;
+typedef struct queue_s queue;
 
 /**
- * create_queue - function that returns a pointer to an initialized process_info_queue_t
+ * create_queue - function that returns a pointer to an initialized queue
 */
-process_info_queue_t* create_queue();
+queue* create_queue();
 
 /**
- * enqueue - function to insert a new element into the process_info_queue_t
+ * enqueue - function to insert a new element into the queue
  * @queue: the queue to insert into 
  * @process: the process to insert at the end fo the queue
 */
-bool enqueue(process_info_queue_t* queue, process_info_t* process);
+bool enqueue(queue* my_queue, void* data);
 
 /**
  * dequeue - function to remove the element at the head of the queue
@@ -21,7 +22,7 @@ bool enqueue(process_info_queue_t* queue, process_info_t* process);
  * 
  * Return: the process that has been dequeued
 */
-process_info_t* dequeue(process_info_queue_t* queue);
+void* dequeue(queue* my_queue);
 
 /**
  * front - function that returns a copy of the first element of the queue without removing it
@@ -29,7 +30,7 @@ process_info_t* dequeue(process_info_queue_t* queue);
  * 
  * Return: a pointer of the copy of the first element
 */
-const process_info_t* front(process_info_queue_t* queue);
+const void* front(queue* my_queue);
 
 /**
  * is_queue_empty - check if the queue is empty
@@ -37,6 +38,4 @@ const process_info_t* front(process_info_queue_t* queue);
  * 
  * Return: a boolean that indicated the result of the check
 */
-bool is_queue_empty(process_info_queue_t* queue);
-
-#include "process_info_queue.c"
+bool is_queue_empty(queue* my_queue);
