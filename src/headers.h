@@ -179,8 +179,8 @@ void pop(pqueue_t **head);
 typedef struct
 {
     scheduling_algo selected_algorithm;
-    int quantum = 0;
-    int curr_quantum = 0;
+    int quantum;
+    int curr_quantum;
 } SchedulerConfig;
 
 /**
@@ -193,7 +193,7 @@ typedef struct
 SchedulerConfig *getSchedulerConfigInstance()
 {
     // Declare the static instance of the singleton
-    static SchedulerConfig instance;
+    static SchedulerConfig instance = {.quantum = 0, .curr_quantum = 0};
 
     // Return a pointer to the instance
     return &instance;
@@ -217,20 +217,20 @@ typedef struct rprocess_s
  *
  * @param head: Pointer to the pointer to the head of the priority queue.
  * @param current_process: Pointer to the current running process by the cpu.
- * 
+ *
  * Description: checks for null value for queue or the head of the queue
  *              check if their is a running process to push it back and take a new one or take a new one immediately
  *              update the current_process data
  *              checks for the remaining time to send a termination signal to the schedular
  */
-void scheduleRR(pqueue_t **head, rprocess_t *current_process);
+void scheduleRR(pqueue_t **head, rprocess_t *current_process, SchedulerConfig *schedulerConfig);
 
 /**
  * scheduleSRTN - Runs the shortest remaining time first algorithm
  *
  * @param head: Pointer to the pointer to the head of the priority queue.
  * @param current_process: Pointer to the current running process by the cpu.
- * 
+ * @param schedulerConfig: Pointer to the schedular configuration.
  * Description: checks for null value for queue or the head of the queue.
  *              if their is no running process it gets one from the queue.
  *              else if a new process came but with less remaining time "which is the priority here" we switch between them and push the current to the queue again.
@@ -244,7 +244,7 @@ void scheduleSRTN(pqueue_t **head, rprocess_t *current_process);
  * @param head: Pointer to the head of the priority queue.
  * @param current_process: Pointer to the current process being scheduled.
  *
- * Description: Implements scheduling logic for HPF algorithm (non-preemptive). 
+ * Description: Implements scheduling logic for HPF algorithm (non-preemptive).
  *              Decrements current process's remaining CPU time, updates if finished, and handles edge cases.
  */
 void scheduleHPF(pqueue_t **head, rprocess_t *current_process);
