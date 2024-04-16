@@ -37,7 +37,7 @@ int *shmaddr; //
  *
  * Description: Structure representing process information including its ID, arrival time,
  *              runtime, and priority.
-*/
+ */
 typedef struct process_info_s
 {
 
@@ -55,23 +55,7 @@ typedef struct process_info_s
  *
  * Description: Enumeration representing different scheduling algorithms including
  *              Highest Priority First, Shortest Remaining Time Next, and Round Robin.
-*/
-typedef enum {
-    HPF = 1,
-    SRTN,
-    RR
-} scheduling_algo;
-///==============================
-
-/**
- * scheduling_algo - Enumeration representing different scheduling algorithms
- * @HPF: Highest Priority First
- * @SRTN: Shortest Remaining Time Next
- * @RR: Round Robin
- *
- * Description: Enumeration representing different scheduling algorithms including
- *              Highest Priority First, Shortest Remaining Time Next, and Round Robin.
-*/
+ */
 typedef enum
 {
     HPF = 1,
@@ -119,6 +103,14 @@ void destroyClk(bool terminateAll)
     }
 }
 
+//===========================================Process=============================================//
+
+/**
+ * decrementRemainingCPUTime - Decrement the remaining CPU time of a process.
+ * @param process: Pointer to the process information structure.
+ */
+void decrementRemainingCPUTime(process_info_t *process);
+
 //=======================================Priority Queue=========================================//
 
 /**
@@ -127,13 +119,13 @@ void destroyClk(bool terminateAll)
  * @priority: Value of the node priority
  * @next: Pointer to the next element of the stack (or queue)
  *
- * Description: doubly linked list node structure
+ * Description: linked list node structure
  */
 typedef struct pqueue_s
 {
-    void *process;
+    process_info_t *process;
     int priority;
-    struct stack_s *next;
+    struct pqueue_s *next;
 } pqueue_t;
 
 /**
@@ -146,7 +138,7 @@ typedef struct pqueue_s
  * Allocates memory for a new node in the priority queue and initializes its data fields.
  * If memory allocation fails, an error message is printed, and the program exits.
  */
-pqueue_t *createNode(void *process, int priority);
+pqueue_t *createNode(process_info_t *process, int priority);
 
 /**
  * push - Inserts a new process into the priority queue based on its priority.
@@ -155,25 +147,57 @@ pqueue_t *createNode(void *process, int priority);
  * @param process: Pointer to the process data to be inserted.
  * @param priority: Priority associated with the process.
  *
- * Inserts a new process into the priority queue in ascending order of priority.
- * If the priority queue is empty, the new process becomes the head of the queue.
- * If the priority queue is not empty, the new process is inserted at the appropriate position
- * to maintain the ascending order of priority.
+ * Description: Inserts a new process into the priority queue in ascending order of priority.
+ *               If the priority queue is empty, the new process becomes the head of the queue.
+ *               If the priority queue is not empty, the new process is inserted at the appropriate position
+ *               to maintain the ascending order of priority.
  */
-void push(pqueue_t **head, void *process, int priority);
+void push(pqueue_t **head, process_info_t *process, int priority);
 
 /**
  * pop - Removes and frees the node at the front of the priority queue.
  *
  * @param head: Pointer to the pointer to the head of the priority queue.
  *
- * Removes and frees the node at the front of the priority queue.
- * If the priority queue is empty, an error message is printed to stderr,
- * and the program exits with failure status.
+ * Description: Removes and frees the node at the front of the priority queue.
+ *               If the priority queue is empty, an error message is printed to stderr,
+ *               and the program exits with failure status.
  */
 void pop(pqueue_t **head);
 
 //=======================================Scheduler=========================================//
+
+/**
+ * SchedulerConfig - Structure for scheduler configuration settings.
+ * @selected_algorithm: The selected scheduling algorithm.
+ * @quantum: Quantum for time slice (if applicable).
+ *
+ * Description: Structure representing the configuration settings for the scheduler,
+ *              including the selected scheduling algorithm and quantum for time slice
+ *              (if applicable).
+ */
+typedef struct
+{
+    scheduling_algo selected_algorithm;
+    int quantum;
+    int curr_quantum;
+} SchedulerConfig;
+
+/**
+ * getSchedulerConfigInstance - Function to get the singleton instance of SchedulerConfig.
+ * @return Pointer to the instance.
+ *
+ * Description: This function returns a pointer to the singleton instance of the SchedulerConfig
+ *              structure, ensuring that only one instance exists throughout the program.
+ */
+SchedulerConfig *getSchedulerConfigInstance()
+{
+    // Declare the static instance of the singleton
+    static SchedulerConfig instance = {.quantum = 0, .curr_quantum = 0};
+
+    // Return a pointer to the instance
+    return &instance;
+}
 
 /**
  * struct rprocess_s - current running process
@@ -184,36 +208,44 @@ void pop(pqueue_t **head);
  */
 typedef struct rprocess_s
 {
-    void *process;
+    process_info_t *process;
     int priority;
 } rprocess_t;
 
-
-
-
-
 /**
- * RR - Runs the Round Robin algorithm
+ * scheduleRR - Runs the Round Robin algorithm
  *
  * @param head: Pointer to the pointer to the head of the priority queue.
  * @param current_process: Pointer to the current running process by the cpu.
- * checks for null value for queue or the head of the queue
- * check if their is a running process to push it back and take a new one or take a new one immediately
- * update the current_process data
- * checks for the remaining time to send a termination signal to the schedular
+ *
+ * Description: checks for null value for queue or the head of the queue
+ *              check if their is a running process to push it back and take a new one or take a new one immediately
+ *              update the current_process data
+ *              checks for the remaining time to send a termination signal to the schedular
  */
-void RR(pqueue_t **head, rprocess_t *current_process);
+void scheduleRR(pqueue_t **head, rprocess_t *current_process);
 
 /**
- * SRTN - Runs the Round Robin algorithm
+ * scheduleSRTN - Runs the shortest remaining time first algorithm
  *
  * @param head: Pointer to the pointer to the head of the priority queue.
  * @param current_process: Pointer to the current running process by the cpu.
- * checks for null value for queue or the head of the queue.
- * if their is no running process it gets one from the queue.
- * else if a new process came but with less remaining time "which is the priority here" we switch between them and push the current to the queue again.
- * update the priority of the current process as it represent the remaining time of the process.
- * checks for the remaining time to send a termination signal to the schedular.
+ * @param schedulerConfig: Pointer to the schedular configuration.
+ * Description: checks for null value for queue or the head of the queue.
+ *              if their is no running process it gets one from the queue.
+ *              else if a new process came but with less remaining time "which is the priority here" we switch between them and push the current to the queue again.
+ *              update the priority of the current process as it represent the remaining time of the process.
+ *              checks for the remaining time to send a termination signal to the schedular.
  */
-void SRTN(pqueue_t **head, rprocess_t *current_process);
+void scheduleSRTN(pqueue_t **head, rprocess_t *current_process);
+
+/**
+ * scheduleHPF - Schedule a process using the Highest Priority First (HPF) algorithm (non-preemptive).
+ * @param head: Pointer to the head of the priority queue.
+ * @param current_process: Pointer to the current process being scheduled.
+ *
+ * Description: Implements scheduling logic for HPF algorithm (non-preemptive).
+ *              Decrements current process's remaining CPU time, updates if finished, and handles edge cases.
+ */
+void scheduleHPF(pqueue_t **head, rprocess_t *current_process);
 #endif /* SAMPLE_HEADER_H */

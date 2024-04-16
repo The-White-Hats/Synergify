@@ -1,5 +1,5 @@
-#include "./../headers.h"
-#include "process_info_queue.h"
+#include "../headers.h"
+#include "../ds/process_info_queue.h"
 
 int main() {
   process_info_t process1;
