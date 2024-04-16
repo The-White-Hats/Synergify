@@ -6,7 +6,7 @@
  * decrementCurrentQuantum - Decrement the current quantum value in the scheduler configuration.
  * @param schedulerConfig: Pointer to the scheduler configuration struct.
  */
-decrementCurrentQuantum(SchedulerConfig *schedulerConfig)
+void decrementCurrentQuantum(SchedulerConfig *schedulerConfig)
 {
     schedulerConfig->curr_quantum--;
 }
@@ -14,7 +14,7 @@ decrementCurrentQuantum(SchedulerConfig *schedulerConfig)
  * resetCurrentQuantum - Reset the current quantum value to the initial quantum value in the scheduler configuration.
  * @param schedulerConfig: Pointer to the scheduler configuration struct.
  */
-resetCurrentQuantum(SchedulerConfig *schedulerConfig)
+void resetCurrentQuantum(SchedulerConfig *schedulerConfig)
 {
     schedulerConfig->curr_quantum = schedulerConfig->quantum;
 }
