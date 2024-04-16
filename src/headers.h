@@ -123,9 +123,9 @@ void decrementRemainingCPUTime(process_info_t *process);
  */
 typedef struct pqueue_s
 {
-    void *process;
+    process_info_t *process;
     int priority;
-    struct stack_s *next;
+    pqueue_t *next;
 } pqueue_t;
 
 /**
@@ -138,7 +138,7 @@ typedef struct pqueue_s
  * Allocates memory for a new node in the priority queue and initializes its data fields.
  * If memory allocation fails, an error message is printed, and the program exits.
  */
-pqueue_t *createNode(void *process, int priority);
+pqueue_t *createNode(process_info_t *process, int priority);
 
 /**
  * push - Inserts a new process into the priority queue based on its priority.
@@ -152,7 +152,7 @@ pqueue_t *createNode(void *process, int priority);
  *               If the priority queue is not empty, the new process is inserted at the appropriate position
  *               to maintain the ascending order of priority.
  */
-void push(pqueue_t **head, void *process, int priority);
+void push(pqueue_t **head, process_info_t *process, int priority);
 
 /**
  * pop - Removes and frees the node at the front of the priority queue.
