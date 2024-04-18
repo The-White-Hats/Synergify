@@ -135,7 +135,7 @@ typedef struct
  *
  * Description: This function returns a pointer to the singleton instance of the SchedulerConfig
  *              structure, ensuring that only one instance exists throughout the program.
- */
+ */ 
 SchedulerConfig *getSchedulerConfigInstance()
 {
     // Declare the static instance of the singleton
