@@ -1,4 +1,4 @@
-#include "headers.h"
+#include "priority_queue.h"
 
 /**
  * createNode - Creates a new node for the priority queue.
@@ -10,16 +10,15 @@
  * Allocates memory for a new node in the priority queue and initializes its data fields.
  * If memory allocation fails, an error message is printed, and the program exits.
  */
-pqueue_t *createNode(process_info_t *process, int priority)
+pqueue_t *createNode(void *process, int priority)
 {
-  pqueue_t *newNode = (pqueue_t *)(sizeof(pqueue_t));
+  pqueue_t *newNode = malloc(sizeof(pqueue_t));
   if (newNode == NULL)
   {
     // Print an error message explaining the reason for the failure
     perror("Memory allocation failed");
     exit(EXIT_FAILURE);
   }
-
   newNode->process = process;
   newNode->priority = priority;
   newNode->next = NULL;
@@ -39,11 +38,15 @@ pqueue_t *createNode(process_info_t *process, int priority)
  * If the priority queue is not empty, the new process is inserted at the appropriate position
  * to maintain the ascending order of priority.
  */
-void push(pqueue_t **head, process_info_t *process, int priority)
+void push(pqueue_t **head, void *process, int priority)
 {
   pqueue_t *newNode = createNode(process, priority);
   if (*head == NULL)
   {
+    *head = newNode;
+  }
+  else if ((*head)->priority > priority) {
+    newNode->next = *head;
     *head = newNode;
   }
   else
@@ -66,11 +69,21 @@ void push(pqueue_t **head, process_info_t *process, int priority)
  * and the program exits with failure status.
  */
 void pop(pqueue_t **head) {
-  if (*head == NULL) {
+  if (head == NULL) {
     fprintf(stderr, "Can't pop an empty queue\n");
     exit(EXIT_FAILURE);
   }
   pqueue_t *temp = *head;
   *head = temp->next;
   free(temp);
+}
+
+/**
+ * isEmpty - Checks if the priority queue is empty.
+ * 
+ * @param head: Pointer to the pointer to the head of the priority queue.
+ * @return 1 if the priority queue is empty, 0 otherwise.
+ */
+int isEmpty(pqueue_t **head) {
+  return *head == NULL;
 }
