@@ -48,9 +48,9 @@ void updateCurrentProcess(pqueue_t **head, rprocess_t *current_process)
  * update the current_process data
  * checks for the remaining time to send a termination signal to the schedular
  */
-void scheduleRR(pqueue_t **head, rprocess_t *current_process, SchedulerConfig *schedulerConfig)
+void scheduleRR(pqueue_t **head, rprocess_t *current_process)
 {
-
+    SchedulerConfig *schedulerConfig = getSchedulerConfigInstance();
     if (head == NULL)
     {
         fprintf(stderr, "Can't pop an empty queue\n");
