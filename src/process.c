@@ -1,4 +1,5 @@
-#include "headers.h"
+#include "clk.h"
+#include "header.h"
 
 /* Modify this file as needed*/
 int remainingtime;
