@@ -9,11 +9,12 @@
  *
  * Description: linked list node structure
  */
+typedef struct pqueue_s pqueue_t;
 typedef struct pqueue_s
 {
     void *process;
     int priority;
-    struct pqueue_s *next;
+    pqueue_t *next;
 } pqueue_t;
 
 /**
