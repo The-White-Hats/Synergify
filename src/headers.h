@@ -33,6 +33,18 @@ int *shmaddr; //
 // Structs & Enums
 
 /**
+ * struct msgbuf_s - Structure for the message sent through the message queue
+ * from the process_generator to the scheduler.
+ *
+ * @mytype: message header.
+ * @message: the actual message sent.
+ */
+typedef struct msgbuf_s {
+  long mytype;
+  void *message;
+} msgbuf_t;
+
+/**
  * struct process_info_s - Structure for holding process information
  * @id: Unique identifier for the process
  * @arrival: Arrival time of the process
@@ -97,7 +109,6 @@ void initClk()
  * Input: terminateAll: a flag to indicate whether that this is the end of simulation.
  *                      It terminates the whole system and releases resources.
  */
-
 void destroyClk(bool terminateAll)
 {
     shmdt(shmaddr);
