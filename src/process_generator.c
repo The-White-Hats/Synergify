@@ -39,6 +39,26 @@ int main(int argc, char *argv[])
     // TODO Generation Main Loop
     // 5. Create a data structure for processes and provide it with its parameters.
     // 6. Send the information to the scheduler at the appropriate time.
+    
+    int msgQId = msgget(SHKEY, 0666 | IPC_CREAT);
+    msgbuf_t msgbuf;
+
+    while (!is_queue_empty(processes_queue))
+    {
+        process_info_t *process_data = (process_info_t *)front(processes_queue);
+        while (process_data && process_data->arrival == getClk())
+        {
+            msgbuf.mytype = getClk();
+            msgbuf.message = (*process_data);
+
+            msgsnd(msgQId, &msgbuf, sizeof(msgbuf.message), IPC_NOWAIT);
+            
+            dequeue(processes_queue);
+            process_data = (process_info_t *)front(processes_queue);
+        }
+    }
+
+    sleep(5);
     // 7. Clear clock resources
     destroyClk(true);
 }
