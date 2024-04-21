@@ -13,6 +13,10 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
+#include <errno.h>
+#include <string.h>
+#include <unistd.h>
+#include "./ds/priority_queue.h"
 
 typedef short bool;
 #define true 1
