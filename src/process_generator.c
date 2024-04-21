@@ -10,6 +10,11 @@ void start_program(const char *const file_name);
 void append_to_path(char *const absolute_path, const char *const file_name);
 ///==============================
 
+///==============================
+/// global variables for process_generator
+int msgq_id;
+///==============================
+
 int main(int argc, char *argv[])
 {
     ///==============================
@@ -40,7 +45,7 @@ int main(int argc, char *argv[])
     // 5. Create a data structure for processes and provide it with its parameters.
     // 6. Send the information to the scheduler at the appropriate time.
     
-    int msgq_id = msgget(SHKEY, 0666 | IPC_CREAT);
+    msgq_id = msgget(SHKEY, 0666 | IPC_CREAT);
     msgbuf_t msgbuf;
 
     while (!is_queue_empty(processes_queue))
@@ -65,7 +70,10 @@ int main(int argc, char *argv[])
 
 void clearResources(int signum)
 {
-    // TODO Clears all resources in case of interruption
+    msgctl(msgq_id, IPC_RMID, (struct msqid_ds *)0);
+    printf("\nIPC resources for process generator was cleared.\n");
+    printf("\nProcess Generator is terminating\n");
+    exit(0);
 }
 
 /**
