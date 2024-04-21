@@ -1,4 +1,5 @@
 #include "header.h"
+#include "clk.h"
 #include "./ds/queue.h"
 
 ///==============================
@@ -40,7 +41,7 @@ int main(int argc, char *argv[])
     // 5. Create a data structure for processes and provide it with its parameters.
     // 6. Send the information to the scheduler at the appropriate time.
     
-    int msgQId = msgget(SHKEY, 0666 | IPC_CREAT);
+    int msgq_id = msgget(SHKEY, 0666 | IPC_CREAT);
     msgbuf_t msgbuf;
 
     while (!is_queue_empty(processes_queue))
@@ -51,7 +52,7 @@ int main(int argc, char *argv[])
             msgbuf.mytype = getClk();
             msgbuf.message = (*process_data);
 
-            msgsnd(msgQId, &msgbuf, sizeof(msgbuf.message), IPC_NOWAIT);
+            msgsnd(msgq_id, &msgbuf, sizeof(msgbuf.message), IPC_NOWAIT);
             
             dequeue(processes_queue);
             process_data = (process_info_t *)front(processes_queue);
