@@ -6,6 +6,8 @@
 void clearResources(int);
 void read_input_file(queue *);
 void get_scheduling_algo(SchedulerConfig *);
+void start_program(const char *const file_name);
+void append_to_path(char *const absolute_path, const char *const file_name);
 ///==============================
 
 int main(int argc, char *argv[])
@@ -25,8 +27,12 @@ int main(int argc, char *argv[])
     get_scheduling_algo(schedulerConfig);
 
     // 3. Initiate and create the scheduler and clock processes.
+
+    start_program("scheduler.out");
+    start_program("clk.out");
+
     // 4. Use this function after creating the clock process to initialize clock
-    // initClk();
+    initClk();
     // To get time use this
     // int x = getClk();
     // printf("current time is %d\n", x);
@@ -34,7 +40,7 @@ int main(int argc, char *argv[])
     // 5. Create a data structure for processes and provide it with its parameters.
     // 6. Send the information to the scheduler at the appropriate time.
     // 7. Clear clock resources
-    // destroyClk(true);
+    destroyClk(true);
 }
 
 void clearResources(int signum)
@@ -95,7 +101,7 @@ read_quantum:
     if (choice == 3)
     {
         printf("\nEnter the quantum size of Round Robin: ");
-        scanf("%d", schedulerConfig->quantum);
+        scanf("%d", &schedulerConfig->quantum);
     }
 
     if (schedulerConfig->quantum < 0)
@@ -103,4 +109,66 @@ read_quantum:
         printf("\nInvalid input, try again\n");
         goto read_quantum;
     }
+}
+
+/**
+ * start_program - creates a new process and executes the passed file_name.
+ *
+ * @file_name: the name of the file (program) to execute.
+ */
+void start_program(const char *const file_name)
+{
+    pid_t process_id = -1;
+
+    process_id = fork();
+    if (process_id == 0)
+    {
+        char absolute_path[256];
+
+        // get the current working directory.
+        getcwd(absolute_path, sizeof(absolute_path));
+        
+        append_to_path(absolute_path, file_name);
+
+        if (execl(absolute_path, file_name, NULL) == -1)
+        {
+            if (errno == ENOENT)
+            {
+                printf("\nNo such file or directory with the name %s\n", file_name);
+            }
+            else if (errno == EACCES)
+            {
+                printf("\nPermission denied for file %s\n", file_name);
+            }
+        }
+        exit(-1);
+    }
+    else if (process_id < 0)
+    {
+        printf("\nAn error occured while forking a new process\n");
+        exit(-1);
+    }
+}
+
+/**
+ * append_to_path - takes a file_name and appends it to an absolute_path.
+ *
+ * @file_name: name of the file to append.
+*/
+void append_to_path(char *const absolute_path, const char *const file_name)
+{
+    int i = 0, j = 0;
+
+    while (absolute_path[i] != '\0')
+        i++;
+
+    // append /bin/ to the path.
+    absolute_path[i++] = '/';
+    absolute_path[i++] = 'b';
+    absolute_path[i++] = 'i';
+    absolute_path[i++] = 'n';
+    absolute_path[i++] = '/';
+
+    while (file_name[j] != '\0')
+        absolute_path[i++] = file_name[j++];
 }
