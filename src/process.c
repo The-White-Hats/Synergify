@@ -2,7 +2,8 @@
 #include "header.h"
 
 /* Modify this file as needed*/
-int remainingtime;
+int remaining_time;
+int prev_time;
 
 int main(int argc, char * argv[])
 {
@@ -11,24 +12,27 @@ int main(int argc, char * argv[])
         exit(EXIT_FAILURE);
     }
 
-    remainingtime = atoi(argv[3]);
+    // initialize the clk and set the previous time step
     initClk();
-    
+    prev_time = getClk();
+
     //TODO it needs to get the remaining time from somewhere
-    //remainingtime = ??;
-    size_t prev_time = 0;
-    printf("Process %d awakened\n", getpid());
-    while (remainingtime > 0)
+    remainingtime = atoi(argv[3]);
+
+    // Sleep till the scheduler wakes me up
+    raise(SIGSTOP);
+    //printf("Process %d awakened\n", getpid());
+  
+    while (remaining_time > 0)
     {
-        if (prev_time != getClk()) {
-            remainingtime--;
-            prev_time = getClk();
-        }
-        // remainingtime = ??;
+        if (getClk() == prev_time) continue;
+        remaining_time -= 1;
+        prev_time = getClk();
     }
-    
+
+    // Send a signal to the scheduler to inform it that this process did finish
+    kill(getppid(), SIGCHLD);
+
     destroyClk(false);
-    kill(getppid(), SIGUSR2);
-    
     return 0;
 }
