@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
 
     // Set signal handlers for process initialization and termination
     signal(SIGUSR1, initializeProcesses);
-    signal(SIGUSR2, terminateRunningProcess);
+    signal(SIGCHLD, terminateRunningProcess);
 
     // Get instance of scheduler configuration and set it
     SchedulerConfig *schedulerConfig = getSchedulerConfigInstance();
@@ -152,6 +152,7 @@ void terminateRunningProcess(int signum)
     pop(head);
     ready_queue = head;
     printf("Process %d Terminated at %d.\n", sid, getClk());
+    signal(SIGCHLD, terminateRunningProcess);
 }
 
 /**
