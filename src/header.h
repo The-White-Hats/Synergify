@@ -101,19 +101,29 @@ typedef struct rprocess_s
  * @param head: Pointer to the pointer to the head of the priority queue.
  * @param num_of_processes: Number of processes to be initialized.
  *
- * Description: Initializes processes, forks them, and adds them to the ready queue.
+ * Description: On a received signal from the generator, initializes processes, forks them, 
+ *              and adds them to the ready queue.
  */
-void initializeProcesses(pqueue_t **head, int num_of_processes);
+void initializeProcesses(int signum);
+
+/**
+ * terminateRunningProcess - Terminates the currently running process
+ *
+ * @param signum: The signal number that triggered the termination.
+ *
+ * Description: Waits for the currently running process to terminate and then removes
+ *              it from the ready queue.
+ */
+void terminateRunningProcess(int signum);
 
 /**
  * addToReadyQueue - Adds a process to the ready queue based on the scheduling algorithm.
  *
- * @param head: Pointer to the pointer to the head of the priority queue.
  * @param process: Pointer to the process to be added.
  *
  * Description: Adds a process to the ready queue based on the selected scheduling algorithm.
  */
-void addToReadyQueue(pqueue_t **head, process_info_t *process);
+void addToReadyQueue(process_info_t *process);
 
 /**
  * scheduleSRTN - Runs the shortest remaining time first algorithm
@@ -142,3 +152,14 @@ void scheduleSRTN(pqueue_t **head);
  * Description: Useless for now
  */
 void scheduleHPF(pqueue_t **head);
+
+/**
+ * contentSwitch - Switches context to the next process
+ *
+ * @param new_front: PID of the new front process
+ * @param old_front: PID of the old front process
+ *
+ * Description: Stops the old front process and continues the new front process.
+ *              If the new front process is -1, it means there's no new front process to switch to.
+ */
+void contentSwitch(pid_t new_front, pid_t old_front);
