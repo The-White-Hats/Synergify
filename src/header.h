@@ -71,12 +71,6 @@ typedef struct
 
 //===========================================Process=============================================//
 
-/**
- * decrementRemainingCPUTime - Decrement the remaining CPU time of a process.
- * @param process: Pointer to the process information structure.
- */
-void decrementRemainingCPUTime(process_info_t *process);
-
 //=======================================Scheduler=========================================//
 
 /**
