@@ -46,15 +46,15 @@ int main(int argc, char *argv[])
     ready_queue = malloc(sizeof(pqueue_t *));
     initClk();
 
-    pid_t running_pid;
+    PCB* running_process;
     while (1)
     {
         // Handle context switching if the queue front changed
-        pid_t front_pid = (*ready_queue == NULL ? -1 : ((PCB *)((*ready_queue)->process))->fork_id);
-        if (running_pid != front_pid)
+        PCB* front_process = (*ready_queue == NULL ? NULL : ((PCB *)((*ready_queue)->process)));
+        if (running_process != front_process)
         {
-            contentSwitch(front_pid, running_pid);
-            running_pid = front_pid;
+            contentSwitch(front_process, running_process);
+            running_process = front_process;
             if (selectedAlgorithmIndex == RR)
                 schedulerConfig->curr_quantum = schedulerConfig->quantum;
         }
@@ -126,6 +126,7 @@ void initializeProcesses(int signum)
         printf("Process %d paused\n", pid);
         kill(pid, SIGSTOP);
         process->fork_id = pid;
+        process->state = READY;
         addToReadyQueue(process);
     }
     signal(SIGUSR1, initializeProcesses);

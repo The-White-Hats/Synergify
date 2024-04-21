@@ -105,12 +105,14 @@ void scheduleHPF(pqueue_t **head)
  * Description: Stops the old front process and continues the new front process.
  *              If the new front process is -1, it means there's no new front process to switch to.
  */
-void contentSwitch(pid_t new_front, pid_t old_front) {
-    if (new_front == -1) return;
+void contentSwitch(PCB* new_front, PCB* old_front) {
+    if (new_front == NULL) return;
 
-    if (old_front != -1) {
+    if (old_front != NULL) {
+        old_front->state = READY;
         kill(old_front, SIGSTOP);
     }
     printf("Current running process: %d\n", new_front);
+    new_front->state = RUNNING;
     kill(new_front, SIGCONT);
 }
