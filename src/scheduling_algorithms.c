@@ -95,3 +95,22 @@ void scheduleHPF(pqueue_t **head)
         exit(EXIT_FAILURE);
     }
 }
+
+/**
+ * contentSwitch - Switches context to the next process
+ *
+ * @param new_front: PID of the new front process
+ * @param old_front: PID of the old front process
+ *
+ * Description: Stops the old front process and continues the new front process.
+ *              If the new front process is -1, it means there's no new front process to switch to.
+ */
+void contentSwitch(pid_t new_front, pid_t old_front) {
+    if (new_front == -1) return;
+
+    if (old_front != -1) {
+        kill(old_front, SIGSTOP);
+    }
+    printf("Current running process: %d\n", new_front);
+    kill(new_front, SIGCONT);
+}
