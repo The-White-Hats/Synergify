@@ -13,12 +13,12 @@ int main(int argc, char *argv[]) {
   // TODO implement the scheduler :)
   // upon termination release the clock resources.
   
-  int msgQId = msgget(SHKEY, 0666 | IPC_CREAT);
+  int msgq_id = msgget(SHKEY, 0666 | IPC_CREAT);
   msgbuf_t msgbuf;
 
   while (1)
   {
-    while (msgrcv(msgQId, &msgbuf, sizeof(msgbuf.message), 0, IPC_NOWAIT) != -1)
+    while (msgrcv(msgq_id, &msgbuf, sizeof(msgbuf.message), 0, IPC_NOWAIT) != -1)
     {
       printf("A new process arrived at time: %d\n", getClk());
       printf("id: %d\n", msgbuf.message.id);
