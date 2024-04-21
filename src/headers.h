@@ -32,17 +32,6 @@ int *shmaddr; //
 ///==============================
 // Structs & Enums
 
-/**
- * struct msgbuf_s - Structure for the message sent through the message queue
- * from the process_generator to the scheduler.
- *
- * @mytype: message header.
- * @message: the actual message sent.
- */
-typedef struct msgbuf_s {
-  long mytype;
-  void *message;
-} msgbuf_t;
 
 /**
  * struct process_info_s - Structure for holding process information
@@ -62,6 +51,18 @@ typedef struct process_info_s
     int runtime;
     int priority;
 } process_info_t;
+
+/**
+ * struct msgbuf_s - Structure for the message sent through the message queue
+ * from the process_generator to the scheduler.
+ *
+ * @mytype: message header.
+ * @message: the actual message sent.
+ */
+typedef struct msgbuf_s {
+  long mytype;
+  process_info_t message;
+} msgbuf_t;
 
 /**
  * scheduling_algo - Enumeration representing different scheduling algorithms
