@@ -13,7 +13,6 @@
 #include <unistd.h>
 #include <signal.h>
 #include "ds/priority_queue.h"
-#include "ds/queue.h"
 
 ///==============================
 // Structs & Enums
