@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
     while (1)
     {
         // Handle context switching if the queue front changed
-        pid_t front_pid = (*ready_queue == NULL ? -1 : ((process_info_t *)((*ready_queue)->process))->fork_id);
+        pid_t front_pid = (*ready_queue == NULL ? -1 : ((PCB *)((*ready_queue)->process))->fork_id);
         if (running_pid != front_pid)
         {
             contentSwitch(front_pid, running_pid);
@@ -93,9 +93,9 @@ void initializeProcesses(int signum)
     args[5] = NULL; // Null-terminate the argument list
     while (num_of_processes--)
     {
-        process_info_t *process = NULL;
-        process = malloc(sizeof(process_info_t));
-        process->id = 1;
+        PCB *process = NULL;
+        process = malloc(sizeof(PCB));
+        process->file_id = 1;
         process->arrival = 0;
         process->runtime = 5;
         process->priority = 5;
@@ -104,7 +104,7 @@ void initializeProcesses(int signum)
         // Allocate memory for each string in args
         for (int i = 1; i < 5; i++)
             args[i] = (char *)malloc(12); // Assuming a 32-bit int can be at most 11 digits, plus 1 for null terminator
-        sprintf(args[1], "%d", process->id);
+        sprintf(args[1], "%d", process->file_id);
         sprintf(args[2], "%d", process->arrival);
         sprintf(args[3], "%d", process->runtime);
         sprintf(args[4], "%d", process->priority);
@@ -143,7 +143,7 @@ void terminateRunningProcess(int signum)
 {
     pqueue_t **head = ready_queue;
     int stat_loc;
-    pid_t sid = wait(&stat_loc), process_id = ((process_info_t *)((*head)->process))->fork_id;
+    pid_t sid = wait(&stat_loc), process_id = ((PCB *)((*head)->process))->fork_id;
     if (sid != process_id)
     {
         perror("Terminated Process isn't the running process");
@@ -162,7 +162,7 @@ void terminateRunningProcess(int signum)
  *
  * Description: Adds a process to the ready queue based on the selected scheduling algorithm.
  */
-void addToReadyQueue(process_info_t *process)
+void addToReadyQueue(PCB *process)
 {
     pqueue_t **head = ready_queue;
     SchedulerConfig *schedulerConfig = getSchedulerConfigInstance();
