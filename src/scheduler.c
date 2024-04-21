@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
     schedulerConfig->curr_quantum = schedulerConfig->quantum;
 
     void (*scheduleFunction[])(pqueue_t **) = {scheduleHPF, scheduleSRTN, scheduleRR};
-    int selectedAlgorithmIndex, incoming_requests, prevTime = -1;
+    int selectedAlgorithmIndex, incoming_requests, prevTime = 0;
     pqueue_t **ready_queue = malloc(sizeof(pqueue_t *));
     initClk();
 

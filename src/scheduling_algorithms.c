@@ -1,5 +1,4 @@
 #include "header.h"
-#include "ds/priority_queue.h"
 
 //! syntax modification when merging with others for process variable data members
 
