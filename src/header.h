@@ -54,6 +54,21 @@ typedef enum
 } scheduling_algo;
 
 /**
+ * process_state - Enumeration representing different state of a process
+ * @RUNNING: process currently running of CPU
+ * @READY: in the ready queue, waiting to get the CPU
+ * @BLOCKED: waiting for IO or some event
+ *
+ * Description: Enumeration representing different state a process could be in
+ */
+typedef enum
+{
+    RUNNING = 1,
+    READY,
+    BLOCKED
+} process_state;
+
+/**
  * SchedulerConfig - Structure for scheduler configuration settings.
  * @selected_algorithm: The selected scheduling algorithm.
  * @quantum: Quantum for time slice (if applicable).
