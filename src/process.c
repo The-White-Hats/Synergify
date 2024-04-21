@@ -17,7 +17,7 @@ int main(int argc, char * argv[])
     prev_time = getClk();
 
     //TODO it needs to get the remaining time from somewhere
-    remainingtime = atoi(argv[3]);
+    remaining_time = atoi(argv[3]);
 
     // Sleep till the scheduler wakes me up
     raise(SIGSTOP);
