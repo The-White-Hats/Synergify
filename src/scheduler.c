@@ -1,7 +1,6 @@
 #include "clk.h"
 #include "header.h"
 
-<<<<<<< HEAD
 /**
  * getSchedulerConfigInstance - Function to get the singleton instance of SchedulerConfig.
  * @return Pointer to the instance.
