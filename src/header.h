@@ -12,6 +12,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
+#include <errno.h>
+#include <string.h>
 #include "ds/priority_queue.h"
 
 ///==============================
@@ -36,6 +38,18 @@ typedef struct process_info_s
     int runtime;
     int priority;
 } process_info_t;
+
+/**
+ * struct msgbuf_s - Structure for the message sent through the message queue
+ * from the process_generator to the scheduler.
+ *
+ * @mytype: message header.
+ * @message: the actual message sent.
+ */
+typedef struct msgbuf_s {
+  long mytype;
+  process_info_t message;
+} msgbuf_t;
 
 /**
  * scheduling_algo - Enumeration representing different scheduling algorithms

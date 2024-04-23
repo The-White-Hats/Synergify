@@ -46,6 +46,9 @@ int main(int argc, char *argv[])
     ready_queue = malloc(sizeof(pqueue_t *));
     initClk();
 
+    int msgQId = msgget(SHKEY, 0666 | IPC_CREAT);
+    msgbuf_t msgbuf;
+    
     pid_t running_pid;
     while (1)
     {
@@ -65,6 +68,16 @@ int main(int argc, char *argv[])
             prevTime = getClk();
             printf("Time Step: %ld\n", prevTime);
             scheduleFunction[selectedAlgorithmIndex](ready_queue);
+        }
+
+        // Receive any process data sent by the process_generator
+        while (msgrcv(msgQId, &msgbuf, sizeof(msgbuf.message), 0, IPC_NOWAIT) != -1)
+        {
+            printf("A new process arrived at time: %d\n", getClk());
+            printf("id: %d\n", msgbuf.message.id);
+            printf("arrival time: %d\n", msgbuf.message.arrival);
+            printf("runtime: %d\n", msgbuf.message.runtime);
+            printf("priority: %d\n", msgbuf.message.priority);
         }
     }
 
