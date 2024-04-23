@@ -68,6 +68,44 @@ typedef enum
 } scheduling_algo;
 
 /**
+ * process_state - Enumeration representing different state of a process
+ * @RUNNING: process currently running of CPU
+ * @READY: in the ready queue, waiting to get the CPU
+ * @BLOCKED: waiting for IO or some event
+ *
+ * Description: Enumeration representing different state a process could be in
+ */
+typedef enum
+{
+    RUNNING = 1,
+    READY,
+    BLOCKED
+} process_state;
+
+/**
+ * PCB - Process control block
+ * @file_id: Unique identifier for the process, taken from the input file
+ * @fork_id: Unique identifier for the process, given by the system when it is forked
+ * @state: Current state of the process in the system
+ * @arrival: Arrival time of the process
+ * @runtime: Runtime of the process - CPU time
+ * @priority: Priority of the process
+ *
+ * Description: Structure representing process information including its ID, arrival time,
+ *              runtime, and priority.
+ */
+typedef struct PCB_s
+{
+    int file_id;    
+    pid_t fork_id;
+    process_state state;
+    int arrival;
+    int runtime;
+    int priority;
+    int turn_around_time;
+} PCB;
+
+/**
  * SchedulerConfig - Structure for scheduler configuration settings.
  * @selected_algorithm: The selected scheduling algorithm.
  * @quantum: Quantum for time slice (if applicable).
