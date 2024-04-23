@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
     // Get instance of scheduler configuration and set it
     SchedulerConfig *schedulerConfig = getSchedulerConfigInstance();
     schedulerConfig->selected_algorithm = (scheduling_algo)atoi(argv[1]);
-    schedulerConfig->quantum = atoi(argv[1]);
+    schedulerConfig->quantum = atoi(argv[2]);
     schedulerConfig->curr_quantum = schedulerConfig->quantum;
 
     // Array of scheduling functions corresponding to each algorithm
@@ -43,13 +43,16 @@ int main(int argc, char *argv[])
 
     int selectedAlgorithmIndex = schedulerConfig->selected_algorithm - 1;
     size_t prevTime = 0;
+
     ready_queue = malloc(sizeof(pqueue_t *));
+    (*ready_queue) = NULL;
+
     initClk();
 
     int msgQId = msgget(SHKEY, 0666 | IPC_CREAT);
     msgbuf_t msgbuf;
     
-    PCB* running_process;
+    PCB* running_process = NULL;
     while (1)
     {
         // Handle context switching if the queue front changed
