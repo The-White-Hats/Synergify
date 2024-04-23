@@ -49,9 +49,8 @@ int main(int argc, char *argv[])
 
     initClk();
 
-    int msgQId = msgget(SHKEY, 0666 | IPC_CREAT);
-    msgbuf_t msgbuf;
-    
+    printf("Scheduler id: %d\n", getpid());
+
     PCB* running_process = NULL;
     while (1)
     {
@@ -71,16 +70,6 @@ int main(int argc, char *argv[])
             prevTime = getClk();
             printf("Time Step: %ld\n", prevTime);
             scheduleFunction[selectedAlgorithmIndex](ready_queue);
-        }
-
-        // Receive any process data sent by the process_generator
-        while (msgrcv(msgQId, &msgbuf, sizeof(msgbuf.message), 0, IPC_NOWAIT) != -1)
-        {
-            printf("A new process arrived at time: %d\n", getClk());
-            printf("id: %d\n", msgbuf.message.id);
-            printf("arrival time: %d\n", msgbuf.message.arrival);
-            printf("runtime: %d\n", msgbuf.message.runtime);
-            printf("priority: %d\n", msgbuf.message.priority);
         }
     }
 
@@ -102,20 +91,22 @@ void initializeProcesses(int signum)
 {
     printf("SIGUSR1 received\n");
     pqueue_t **head = ready_queue;
-    // TODO: Receive The number of processes from a shared memory.
-    size_t num_of_processes = 1;
+
+    int msgQId = msgget(SHKEY, 0666 | IPC_CREAT);
+    msgbuf_t msgbuf;
+
     char *args[6];
-    args[0] = "./b";
+    args[0] = "./bin/process.out";
     args[5] = NULL; // Null-terminate the argument list
-    while (num_of_processes--)
+
+    while (msgrcv(msgQId, &msgbuf, sizeof(msgbuf.message), 0, IPC_NOWAIT) != -1)
     {
         PCB *process = NULL;
         process = malloc(sizeof(PCB));
-        process->file_id = 1;
-        process->arrival = 0;
-        process->runtime = 5;
-        process->priority = 5;
-        // TODO: Receive The Processes Info From The Message Queue
+        process->file_id = msgbuf.message.id;
+        process->arrival = msgbuf.message.arrival;
+        process->runtime = msgbuf.message.runtime;
+        process->priority = msgbuf.message.priority;
         
         // Allocate memory for each string in args
         for (int i = 1; i < 5; i++)
@@ -125,6 +116,8 @@ void initializeProcesses(int signum)
         sprintf(args[3], "%d", process->runtime);
         sprintf(args[4], "%d", process->priority);
 
+        printf("Current time: %d\n", getClk());
+
         pid_t pid = fork();
         if (pid == -1)
         {
@@ -133,14 +126,13 @@ void initializeProcesses(int signum)
         }
         else if (pid == 0)
         {
-
             execvp(args[0], args);
             perror("Couldn't use execvp");
             exit(EXIT_FAILURE);
         }
         usleep(1000);
         printf("Process %d paused\n", pid);
-        kill(pid, SIGSTOP);
+        //kill(pid, SIGSTOP);
         process->fork_id = pid;
         process->state = READY;
         addToReadyQueue(process);
