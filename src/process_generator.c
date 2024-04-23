@@ -16,7 +16,7 @@ const char *clk_file_name = "clk.out";
 void clearResources(int);
 void read_input_file(queue *);
 void get_scheduling_algo(int *algorithm_choosen, int *quantum_time);
-void start_program(const char *const file_name, int n, ...);
+int start_program(const char *const file_name, int n, ...);
 void append_to_path(char *const absolute_path, const char *const file_name);
 ///==============================
 
@@ -42,9 +42,8 @@ int main(int argc, char *argv[])
     get_scheduling_algo(&algorithm_choosen, &quantum_time);
 
     // 3. Initiate and create the scheduler and clock processes.
-
-    start_program(scheduler_file_name, 2, algorithm_choosen, quantum_time);
-    start_program(clk_file_name, 0);
+    int scheduler_id = start_program(scheduler_file_name, 2, algorithm_choosen, quantum_time);
+    int clk_id = start_program(clk_file_name, 0);
 
     // 4. Use this function after creating the clock process to initialize clock
     initClk();
@@ -61,8 +60,11 @@ int main(int argc, char *argv[])
     while (!is_queue_empty(processes_queue))
     {
         process_info_t *process_data = (process_info_t *)front(processes_queue);
+        bool send_signal = false;
         while (process_data && process_data->arrival == getClk())
         {
+            send_signal = true;
+
             msgbuf.mytype = getClk();
             msgbuf.message = (*process_data);
 
@@ -71,9 +73,15 @@ int main(int argc, char *argv[])
             dequeue(processes_queue);
             process_data = (process_info_t *)front(processes_queue);
         }
+
+        if (send_signal)
+            kill(scheduler_id, SIGUSR1);
     }
 
-    sleep(5);
+    kill(scheduler_id, SIGCHLD);
+
+    raise(SIGSTOP);
+
     // 7. Clear clock resources
     destroyClk(true);
 }
@@ -152,12 +160,13 @@ read_quantum:
  *
  * @file_name: the name of the file (program) to execute.
  * @n: number of variadic arguments.
+ * @return: the forked process id.
  *
  * Description: If the program to execute is the scheduler, then take another 2 arguments and convert
  * them from an int to a string and pass them to it as an input, else if its any other program then
  * execute it normally.
  */
-void start_program(const char *const file_name, int n, ...)
+int start_program(const char *const file_name, int n, ...)
 {
     pid_t process_id = -1;
     va_list ptr;
@@ -211,6 +220,8 @@ void start_program(const char *const file_name, int n, ...)
         printf("\nAn error occured while forking a new process\n");
         exit(-1);
     }
+    
+    return process_id;
 }
 
 /**
