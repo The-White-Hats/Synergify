@@ -3,6 +3,14 @@
 #include "./ds/queue.h"
 #include <stdarg.h>
 
+
+///==============================
+// constants related to process_generator
+#define PATH_SIZE 256
+const char *scheduler_file_name = "scheduler.out";
+const char *clk_file_name = "clk.out";
+///==============================
+
 ///==============================
 // functions
 void clearResources(int);
@@ -35,8 +43,8 @@ int main(int argc, char *argv[])
 
     // 3. Initiate and create the scheduler and clock processes.
 
-    start_program("scheduler.out", 2, algorithm_choosen, quantum_time);
-    start_program("clk.out", 0);
+    start_program(scheduler_file_name, 2, algorithm_choosen, quantum_time);
+    start_program(clk_file_name, 0);
 
     // 4. Use this function after creating the clock process to initialize clock
     initClk();
@@ -159,7 +167,7 @@ void start_program(const char *const file_name, int n, ...)
     process_id = fork();
     if (process_id == 0)
     {
-        char absolute_path[256];
+        char absolute_path[PATH_SIZE];
         int error;
 
         // get the current working directory.
@@ -167,7 +175,7 @@ void start_program(const char *const file_name, int n, ...)
         append_to_path(absolute_path, file_name);
 
         // if we would execute scheduler, then pass to it some arguments.
-        if (strcmp(file_name, "scheduler.out") == 0)
+        if (strcmp(file_name, scheduler_file_name) == 0)
         {
             char argv[2][10];
 
