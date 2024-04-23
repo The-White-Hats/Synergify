@@ -1,13 +1,14 @@
 #include "header.h"
 #include "clk.h"
 #include "./ds/queue.h"
+#include <stdarg.h>
 
 ///==============================
 // functions
 void clearResources(int);
 void read_input_file(queue *);
-void get_scheduling_algo(SchedulerConfig *);
-void start_program(const char *const file_name);
+void get_scheduling_algo(int *algorithm_choosen, int *quantum_time);
+void start_program(const char *const file_name, int n, ...);
 void append_to_path(char *const absolute_path, const char *const file_name);
 ///==============================
 
@@ -21,7 +22,6 @@ int main(int argc, char *argv[])
     ///==============================
     // data
     queue *processes_queue = create_queue();
-    SchedulerConfig* schedulerConfig = getSchedulerConfigInstance();
     ///==============================
 
     signal(SIGINT, clearResources);
@@ -30,12 +30,13 @@ int main(int argc, char *argv[])
     read_input_file(processes_queue);
 
     // 2. Ask the user for the chosen scheduling algorithm and its parameters, if there are any.
-    get_scheduling_algo(schedulerConfig);
+    int algorithm_choosen = -1, quantum_time = 0;
+    get_scheduling_algo(&algorithm_choosen, &quantum_time);
 
     // 3. Initiate and create the scheduler and clock processes.
 
-    start_program("scheduler.out");
-    start_program("clk.out");
+    start_program("scheduler.out", 2, algorithm_choosen, quantum_time);
+    start_program("clk.out", 0);
 
     // 4. Use this function after creating the clock process to initialize clock
     initClk();
@@ -104,12 +105,11 @@ void read_input_file(queue *processes_queue)
 
 /**
  * get_scheduling_algo - read the scheduling algo and its parameters
- * @algo: a pointer to store the chosen algo
- * @quantum: a pointer to store the round robin quantum if it was choosen
+ * @algorithm_choosen: a pointer to store the chosen algo
+ * @quantum_time: a pointer to store the round robin quantum if it was choosen
 */
-void get_scheduling_algo(SchedulerConfig *schedulerConfig)
+void get_scheduling_algo(int *algorithm_choosen, int *quantum_time)
 {
-    int choice = -1;
     printf("\n");
 read_algo:
     printf("Enter your choice for the Scheduling Algorithm\n");
@@ -118,22 +118,21 @@ read_algo:
     printf("3 for Round Robin\n");
     printf("Your choice: ");
 
-    scanf("%d", &choice);
-    if (choice < 1 || choice > 3)
+    scanf("%d", algorithm_choosen);
+    if ((*algorithm_choosen) < 1 || (*algorithm_choosen) > 3)
     {
         printf("\nInvalid input, try again\n\n");
         goto read_algo;
     }
-    schedulerConfig->selected_algorithm = (scheduling_algo)choice;
 
 read_quantum:
-    if (choice == 3)
+    if ((*algorithm_choosen) == 3)
     {
         printf("\nEnter the quantum size of Round Robin: ");
-        scanf("%d", &schedulerConfig->quantum);
+        scanf("%d", quantum_time);
     }
 
-    if (schedulerConfig->quantum < 0)
+    if ((*quantum_time) < 0)
     {
         printf("\nInvalid input, try again\n");
         goto read_quantum;
@@ -144,22 +143,49 @@ read_quantum:
  * start_program - creates a new process and executes the passed file_name.
  *
  * @file_name: the name of the file (program) to execute.
+ * @n: number of variadic arguments.
+ *
+ * Description: If the program to execute is the scheduler, then take another 2 arguments and convert
+ * them from an int to a string and pass them to it as an input, else if its any other program then
+ * execute it normally.
  */
-void start_program(const char *const file_name)
+void start_program(const char *const file_name, int n, ...)
 {
     pid_t process_id = -1;
+    va_list ptr;
+
+    va_start(ptr, n);
 
     process_id = fork();
     if (process_id == 0)
     {
         char absolute_path[256];
+        int error;
 
         // get the current working directory.
         getcwd(absolute_path, sizeof(absolute_path));
-        
         append_to_path(absolute_path, file_name);
 
-        if (execl(absolute_path, file_name, NULL) == -1)
+        // if we would execute scheduler, then pass to it some arguments.
+        if (strcmp(file_name, "scheduler.out") == 0)
+        {
+            char argv[2][10];
+
+            sprintf(argv[0], "%d", va_arg(ptr, int));
+            sprintf(argv[1], "%d", va_arg(ptr, int));
+
+            va_end(ptr);
+
+            error = execl(absolute_path, file_name, argv[0], argv[1], NULL);
+        }
+        else
+        {
+            va_end(ptr);
+
+            error = execl(absolute_path, file_name, NULL);
+        }
+
+        if (error == -1)
         {
             if (errno == ENOENT)
             {
