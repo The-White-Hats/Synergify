@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
 
     // Set signal handlers for process initialization and termination
     signal(SIGUSR1, initializeProcesses);
-    signal(SIGUSR2, terminateRunningProcess);
+    signal(SIGCHLD, terminateRunningProcess);
 
     // Get instance of scheduler configuration and set it
     SchedulerConfig *schedulerConfig = getSchedulerConfigInstance();
@@ -46,15 +46,18 @@ int main(int argc, char *argv[])
     ready_queue = malloc(sizeof(pqueue_t *));
     initClk();
 
-    pid_t running_pid;
+    int msgQId = msgget(SHKEY, 0666 | IPC_CREAT);
+    msgbuf_t msgbuf;
+    
+    PCB* running_process;
     while (1)
     {
         // Handle context switching if the queue front changed
-        pid_t front_pid = (*ready_queue == NULL ? -1 : ((process_info_t *)((*ready_queue)->process))->fork_id);
-        if (running_pid != front_pid)
+        PCB* front_process = (*ready_queue == NULL ? NULL : ((PCB *)((*ready_queue)->process)));
+        if (running_process != front_process)
         {
-            contentSwitch(front_pid, running_pid);
-            running_pid = front_pid;
+            contentSwitch(front_process, running_process);
+            running_process = front_process;
             if (selectedAlgorithmIndex == RR)
                 schedulerConfig->curr_quantum = schedulerConfig->quantum;
         }
@@ -65,6 +68,16 @@ int main(int argc, char *argv[])
             prevTime = getClk();
             printf("Time Step: %ld\n", prevTime);
             scheduleFunction[selectedAlgorithmIndex](ready_queue);
+        }
+
+        // Receive any process data sent by the process_generator
+        while (msgrcv(msgQId, &msgbuf, sizeof(msgbuf.message), 0, IPC_NOWAIT) != -1)
+        {
+            printf("A new process arrived at time: %d\n", getClk());
+            printf("id: %d\n", msgbuf.message.id);
+            printf("arrival time: %d\n", msgbuf.message.arrival);
+            printf("runtime: %d\n", msgbuf.message.runtime);
+            printf("priority: %d\n", msgbuf.message.priority);
         }
     }
 
@@ -93,9 +106,9 @@ void initializeProcesses(int signum)
     args[5] = NULL; // Null-terminate the argument list
     while (num_of_processes--)
     {
-        process_info_t *process = NULL;
-        process = malloc(sizeof(process_info_t));
-        process->id = 1;
+        PCB *process = NULL;
+        process = malloc(sizeof(PCB));
+        process->file_id = 1;
         process->arrival = 0;
         process->runtime = 5;
         process->priority = 5;
@@ -104,7 +117,7 @@ void initializeProcesses(int signum)
         // Allocate memory for each string in args
         for (int i = 1; i < 5; i++)
             args[i] = (char *)malloc(12); // Assuming a 32-bit int can be at most 11 digits, plus 1 for null terminator
-        sprintf(args[1], "%d", process->id);
+        sprintf(args[1], "%d", process->file_id);
         sprintf(args[2], "%d", process->arrival);
         sprintf(args[3], "%d", process->runtime);
         sprintf(args[4], "%d", process->priority);
@@ -126,6 +139,7 @@ void initializeProcesses(int signum)
         printf("Process %d paused\n", pid);
         kill(pid, SIGSTOP);
         process->fork_id = pid;
+        process->state = READY;
         addToReadyQueue(process);
     }
     signal(SIGUSR1, initializeProcesses);
@@ -143,7 +157,7 @@ void terminateRunningProcess(int signum)
 {
     pqueue_t **head = ready_queue;
     int stat_loc;
-    pid_t sid = wait(&stat_loc), process_id = ((process_info_t *)((*head)->process))->fork_id;
+    pid_t sid = wait(&stat_loc), process_id = ((PCB *)((*head)->process))->fork_id;
     if (sid != process_id)
     {
         perror("Terminated Process isn't the running process");
@@ -152,6 +166,7 @@ void terminateRunningProcess(int signum)
     pop(head);
     ready_queue = head;
     printf("Process %d Terminated at %d.\n", sid, getClk());
+    signal(SIGCHLD, terminateRunningProcess);
 }
 
 /**
@@ -161,7 +176,7 @@ void terminateRunningProcess(int signum)
  *
  * Description: Adds a process to the ready queue based on the selected scheduling algorithm.
  */
-void addToReadyQueue(process_info_t *process)
+void addToReadyQueue(PCB *process)
 {
     pqueue_t **head = ready_queue;
     SchedulerConfig *schedulerConfig = getSchedulerConfigInstance();

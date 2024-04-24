@@ -12,6 +12,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
+#include <errno.h>
+#include <string.h>
 #include "ds/priority_queue.h"
 
 ///==============================
@@ -38,6 +40,18 @@ typedef struct process_info_s
 } process_info_t;
 
 /**
+ * struct msgbuf_s - Structure for the message sent through the message queue
+ * from the process_generator to the scheduler.
+ *
+ * @mytype: message header.
+ * @message: the actual message sent.
+ */
+typedef struct msgbuf_s {
+  long mytype;
+  process_info_t message;
+} msgbuf_t;
+
+/**
  * scheduling_algo - Enumeration representing different scheduling algorithms
  * @HPF: Highest Priority First
  * @SRTN: Shortest Remaining Time Next
@@ -52,6 +66,44 @@ typedef enum
     SRTN,
     RR
 } scheduling_algo;
+
+/**
+ * process_state - Enumeration representing different state of a process
+ * @RUNNING: process currently running of CPU
+ * @READY: in the ready queue, waiting to get the CPU
+ * @BLOCKED: waiting for IO or some event
+ *
+ * Description: Enumeration representing different state a process could be in
+ */
+typedef enum
+{
+    RUNNING = 1,
+    READY,
+    BLOCKED
+} process_state;
+
+/**
+ * PCB - Process control block
+ * @file_id: Unique identifier for the process, taken from the input file
+ * @fork_id: Unique identifier for the process, given by the system when it is forked
+ * @state: Current state of the process in the system
+ * @arrival: Arrival time of the process
+ * @runtime: Runtime of the process - CPU time
+ * @priority: Priority of the process
+ *
+ * Description: Structure representing process information including its ID, arrival time,
+ *              runtime, and priority.
+ */
+typedef struct PCB_s
+{
+    int file_id;    
+    pid_t fork_id;
+    process_state state;
+    int arrival;
+    int runtime;
+    int priority;
+    int turn_around_time;
+} PCB;
 
 /**
  * SchedulerConfig - Structure for scheduler configuration settings.
