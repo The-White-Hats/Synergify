@@ -19,6 +19,11 @@ int main(int argc, char * argv[])
     //TODO it needs to get the remaining time from somewhere
     remaining_time = atoi(argv[3]);
 
+    printf("process id: %s\n", argv[1]);
+    printf("process id: %s\n", argv[2]);
+    printf("process id: %s\n", argv[3]);
+    printf("process id: %s\n", argv[4]);
+
     // Sleep till the scheduler wakes me up
     raise(SIGSTOP);
     //printf("Process %d awakened\n", getpid());

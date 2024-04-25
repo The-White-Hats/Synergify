@@ -14,6 +14,7 @@
 #include <signal.h>
 #include <errno.h>
 #include <string.h>
+#include <stdarg.h>
 #include "ds/priority_queue.h"
 
 ///==============================
@@ -175,7 +176,7 @@ void terminateRunningProcess(int signum);
  *
  * Description: Adds a process to the ready queue based on the selected scheduling algorithm.
  */
-void addToReadyQueue(process_info_t *process);
+void addToReadyQueue(PCB *process);
 
 /**
  * scheduleSRTN - Runs the shortest remaining time first algorithm
@@ -214,4 +215,4 @@ void scheduleHPF(pqueue_t **head);
  * Description: Stops the old front process and continues the new front process.
  *              If the new front process is -1, it means there's no new front process to switch to.
  */
-void contentSwitch(pid_t new_front, pid_t old_front);
+void contentSwitch(PCB* new_front, PCB* old_front);
