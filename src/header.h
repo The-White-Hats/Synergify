@@ -47,9 +47,10 @@ typedef struct process_info_s
  * @mytype: message header.
  * @message: the actual message sent.
  */
-typedef struct msgbuf_s {
-  long mytype;
-  process_info_t message;
+typedef struct msgbuf_s
+{
+    long mytype;
+    process_info_t message;
 } msgbuf_t;
 
 /**
@@ -73,14 +74,17 @@ typedef enum
  * @RUNNING: process currently running of CPU
  * @READY: in the ready queue, waiting to get the CPU
  * @BLOCKED: waiting for IO or some event
- *
+ * @FINISHED: finished its execution
+ * @NEWBIE: didn't start yet
  * Description: Enumeration representing different state a process could be in
  */
 typedef enum
 {
     RUNNING = 1,
     READY,
-    BLOCKED
+    BLOCKED,
+    FINISHED,
+    NEWBIE,
 } process_state;
 
 /**
@@ -97,13 +101,15 @@ typedef enum
  */
 typedef struct PCB_s
 {
-    int file_id;    
+    int file_id;
     pid_t fork_id;
     process_state state;
     int arrival;
     int runtime;
     int priority;
-    int turn_around_time;
+    int start_time;
+    int last_stop_time;
+    int waiting_time;
 } PCB;
 
 /**
@@ -132,7 +138,7 @@ typedef struct
  *
  * Description: This function returns a pointer to the singleton instance of the SchedulerConfig
  *              structure, ensuring that only one instance exists throughout the program.
- */ 
+ */
 SchedulerConfig *getSchedulerConfigInstance();
 
 /**
@@ -154,7 +160,7 @@ typedef struct rprocess_s
  * @param head: Pointer to the pointer to the head of the priority queue.
  * @param num_of_processes: Number of processes to be initialized.
  *
- * Description: On a received signal from the generator, initializes processes, forks them, 
+ * Description: On a received signal from the generator, initializes processes, forks them,
  *              and adds them to the ready queue.
  */
 void initializeProcesses(int signum);
@@ -211,8 +217,9 @@ void scheduleHPF(pqueue_t **head);
  *
  * @param new_front: PID of the new front process
  * @param old_front: PID of the old front process
- *
+ * @param file: file which the log will be written to
+ * @param currentTime: current system time
  * Description: Stops the old front process and continues the new front process.
  *              If the new front process is -1, it means there's no new front process to switch to.
  */
-void contentSwitch(PCB* new_front, PCB* old_front);
+void contentSwitch(PCB *new_front, PCB *old_front, int currentTime, FILE *file);

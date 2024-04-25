@@ -20,6 +20,33 @@ SchedulerConfig *getSchedulerConfigInstance()
 // To be accessed by signal handlers
 pqueue_t **ready_queue;
 
+float total_waiting_time = 0; // sum of waiting times
+float total_weighted_turnaround_time = 0; // sum of weighted turnaround times
+float *wta_values = NULL; // array of weighted turnaround times
+int total_processes = 0; //total number of processes that come so far
+int idx = 0; //index of the wta_values array
+int waste_time = 0; //cpu wasted time
+
+float calculate_std_wta()
+{
+    float mean = total_weighted_turnaround_time / total_processes;
+    float sum = 0.0;
+    for (int i = 0; i < total_processes; i++)
+    {
+        sum += pow(wta_values[i] - mean, 2);
+    }
+    float variance = sum / total_processes;
+    return sqrt(variance);
+}
+
+void addPref(FILE *file)
+{
+    fprintf(file, "CPU utilization = %.2f%%\n", (float)((getClk() - waste_time) / (float)getClk()) * 100.0);
+    fprintf(file, "Avg WTA = %.2f\n", total_weighted_turnaround_time / total_processes);
+    fprintf(file, "Avg Waiting = %.2f\n", total_waiting_time / total_processes);
+    fprintf(file, "STD WTA = %.2f\n", calculate_std_wta());
+}
+
 int main(int argc, char *argv[])
 {
     if (argc != 3)
@@ -27,6 +54,25 @@ int main(int argc, char *argv[])
         perror("Use: ./scheduler <scheduling_algo> <quantum>");
         exit(EXIT_FAILURE);
     }
+
+    // Open file for writing
+    FILE *log = fopen("schedular.log.txt", "a");   // "a" to append to the file
+    FILE *perf = fopen("scheduler.perf.txt", "a"); // "a" to append to the file
+
+    // Check if the file was opened successfully
+    if (log == NULL)
+    {
+        printf("Error opening schedular.log!\n");
+        return 1;
+    }
+    // Check if the file was opened successfully
+    if (perf == NULL)
+    {
+        printf("Error opening schedular.perf!\n");
+        return 1;
+    }
+
+    wta_values = malloc(sizeof(float) * total_processes);
 
     // Set signal handlers for process initialization and termination
     signal(SIGUSR1, initializeProcesses);
@@ -51,14 +97,14 @@ int main(int argc, char *argv[])
 
     printf("Scheduler id: %d\n", getpid());
 
-    PCB* running_process = NULL;
+    PCB *running_process = NULL;
     while (1)
     {
         // Handle context switching if the queue front changed
-        PCB* front_process = (*ready_queue == NULL ? NULL : ((PCB *)((*ready_queue)->process)));
+        PCB *front_process = (*ready_queue == NULL ? NULL : ((PCB *)((*ready_queue)->process)));
         if (running_process != front_process)
         {
-            contentSwitch(front_process, running_process);
+            contentSwitch(front_process, running_process, getClk(), log);
             running_process = front_process;
             if (selectedAlgorithmIndex == RR)
                 schedulerConfig->curr_quantum = schedulerConfig->quantum;
@@ -67,11 +113,18 @@ int main(int argc, char *argv[])
         // Run selected algorithm if the clock has ticked
         if (getClk() != prevTime)
         {
+            if (*ready_queue == NULL)
+                waste_time++;
             prevTime = getClk();
             printf("Time Step: %ld\n", prevTime);
             scheduleFunction[selectedAlgorithmIndex](ready_queue);
         }
     }
+
+    addPref(perf);
+
+    fclose(log);
+    fclose(perf);
 
     // Upon termination release the clock resources.
     destroyClk(true);
@@ -104,10 +157,12 @@ void initializeProcesses(int signum)
         PCB *process = NULL;
         process = malloc(sizeof(PCB));
         process->file_id = msgbuf.message.id;
-        process->arrival = msgbuf.message.arrival;
+        process->arrival = process->last_stop_time = msgbuf.message.arrival;
         process->runtime = msgbuf.message.runtime;
         process->priority = msgbuf.message.priority;
-        
+        process->start_time = -1;
+        process->waiting_time = 0;
+
         // Allocate memory for each string in args
         for (int i = 1; i < 5; i++)
             args[i] = (char *)malloc(12); // Assuming a 32-bit int can be at most 11 digits, plus 1 for null terminator
@@ -132,9 +187,9 @@ void initializeProcesses(int signum)
         }
         usleep(1000);
         printf("Process %d paused\n", pid);
-        //kill(pid, SIGSTOP);
+        // kill(pid, SIGSTOP);
         process->fork_id = pid;
-        process->state = READY;
+        process->state = NEWBIE;
         addToReadyQueue(process);
     }
     signal(SIGUSR1, initializeProcesses);
@@ -158,6 +213,20 @@ void terminateRunningProcess(int signum)
         perror("Terminated Process isn't the running process");
         exit(EXIT_FAILURE);
     }
+
+    wta_values = realloc(wta_values, sizeof(float) * total_processes);
+    if (wta_values == NULL)
+    {
+        perror("Can not resize the array of WTA values");
+        exit(EXIT_FAILURE);
+    }
+
+    wta_values[idx] = (float)(getClk() - ((PCB *)((*head)->process))->arrival) / ((PCB *)((*head)->process))->runtime;
+
+    ((PCB *)((*head)->process))->state = FINISHED;
+    total_waiting_time += ((PCB *)((*head)->process))->waiting_time;
+    total_weighted_turnaround_time += wta_values[idx++];
+
     pop(head);
     ready_queue = head;
     printf("Process %d Terminated at %d.\n", sid, getClk());
@@ -197,4 +266,5 @@ void addToReadyQueue(PCB *process)
         break;
     }
     ready_queue = head;
+    total_processes++;
 }
