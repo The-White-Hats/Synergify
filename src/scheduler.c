@@ -26,6 +26,7 @@ float *wta_values = NULL; // array of weighted turnaround times
 int total_processes = 0; //total number of processes that come so far
 int idx = 0; //index of the wta_values array
 int waste_time = 0; //cpu wasted time
+bool flag = false; //flag to indicate that no process will come again
 
 float calculate_std_wta()
 {
@@ -77,6 +78,7 @@ int main(int argc, char *argv[])
     // Set signal handlers for process initialization and termination
     signal(SIGUSR1, initializeProcesses);
     signal(SIGCHLD, terminateRunningProcess);
+    signal(SIGUSR2, setFlag);
 
     // Get instance of scheduler configuration and set it
     SchedulerConfig *schedulerConfig = getSchedulerConfigInstance();
@@ -110,6 +112,9 @@ int main(int argc, char *argv[])
                 schedulerConfig->curr_quantum = schedulerConfig->quantum;
         }
 
+        if(flag == true && *ready_queue == NULL) // no more processes will come and the queue is empty
+            break;
+
         // Run selected algorithm if the clock has ticked
         if (getClk() != prevTime)
         {
@@ -119,6 +124,7 @@ int main(int argc, char *argv[])
             printf("Time Step: %ld\n", prevTime);
             scheduleFunction[selectedAlgorithmIndex](ready_queue);
         }
+
     }
 
     addPref(perf);
@@ -267,4 +273,8 @@ void addToReadyQueue(PCB *process)
     }
     ready_queue = head;
     total_processes++;
+}
+
+void setFlag(int signum){
+    flag = true;
 }

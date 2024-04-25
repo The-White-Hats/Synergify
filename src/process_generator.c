@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
             kill(scheduler_id, SIGUSR1);
     }
 
-    kill(scheduler_id, SIGCHLD);
+    kill(scheduler_id, SIGUSR2);
 
     raise(SIGSTOP);
 
