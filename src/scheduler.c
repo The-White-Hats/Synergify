@@ -18,8 +18,8 @@ SchedulerConfig *getSchedulerConfigInstance()
 }
 
 // To be accessed by signal handlers
-pqueue_t **ready_queue;
-
+pqueue_t **ready_queue, **queue;
+void generateProcesses();
 int main(int argc, char *argv[])
 {
     if (argc != 3)
@@ -43,33 +43,40 @@ int main(int argc, char *argv[])
 
     int selectedAlgorithmIndex = schedulerConfig->selected_algorithm - 1;
     size_t prev_time = 0;
+    size_t prev_time = 0;
 
     ready_queue = malloc(sizeof(pqueue_t *));
     (*ready_queue) = NULL;
+    queue = malloc(sizeof(pqueue_t *));
+    (*queue) = NULL;
 
     initClk();
 
     printf("Scheduler id: %d\n", getpid());
-
     PCB *running_process = NULL;
     while (1)
     {
         int curr_time = getClk();
+        int curr_time = getClk();
         // Handle context switching if the queue front changed
+        generateProcesses();
         PCB *front_process = (*ready_queue == NULL ? NULL : ((PCB *)((*ready_queue)->process)));
         if (((running_process != NULL) != (front_process != NULL)) || (running_process && running_process->fork_id != front_process->fork_id))
         {
             printf("Context Switching\n");
-            //contentSwitch(front_process, running_process);
+            contentSwitch(front_process, running_process);
             running_process = front_process;
             if (selectedAlgorithmIndex == RR)
                 schedulerConfig->curr_quantum = schedulerConfig->quantum;
+            curr_time = getClk();
             printf("Finished Context Switching\n");
         }
-
         // Run selected algorithm if the clock has ticked
         if (curr_time != prev_time)
+        if (curr_time != prev_time)
         {
+            prev_time = curr_time;
+            printf("Time Step: %ld\n", prev_time);
             prev_time = curr_time;
             printf("Time Step: %ld\n", prev_time);
             scheduleFunction[selectedAlgorithmIndex](ready_queue);
@@ -77,7 +84,7 @@ int main(int argc, char *argv[])
     }
 
     // Upon termination release the clock resources.
-    destroyClk(true);
+    destroyClk(false);
     return 0;
 }
 
@@ -93,16 +100,8 @@ int main(int argc, char *argv[])
 void initializeProcesses(int signum)
 {
     printf("SIGUSR1 received\n");
-    pqueue_t **head = ready_queue;
-
     int msgQId = msgget(SHKEY, 0666 | IPC_CREAT);
     msgbuf_t msgbuf;
-
-    pqueue_t **queue = malloc(sizeof(pqueue_t *));
-    (*queue) = NULL;
-
-    char absolute_path[PATH_SIZE];
-    getAbsolutePath(absolute_path, "process.out");
 
     while (msgrcv(msgQId, &msgbuf, sizeof(msgbuf.message), 0, IPC_NOWAIT) != -1)
     {
@@ -122,7 +121,14 @@ void initializeProcesses(int signum)
         exit(EXIT_FAILURE);
     }
 
+    signal(SIGUSR1, initializeProcesses);
+}
+
+void generateProcesses() {
+    if (!(*queue)) return;
     char *args[6];
+    char absolute_path[PATH_SIZE];
+    getAbsolutePath(absolute_path, "process.out");
     args[0] = absolute_path;
     args[5] = NULL; // Null-terminate the argument list
     // Allocate memory for each string in args
@@ -136,6 +142,7 @@ void initializeProcesses(int signum)
         sprintf(args[2], "%d", process->arrival);
         sprintf(args[3], "%d", process->runtime);
         sprintf(args[4], "%d", process->priority);
+        printf("Generating Process #%d\n", process->file_id);
         pid_t pid = fork();
         if (pid == -1)
         {
@@ -151,14 +158,14 @@ void initializeProcesses(int signum)
         usleep(1000);
         kill(pid, SIGSTOP);
         printf("Process %d Paused\n", pid);
+        kill(pid, SIGSTOP);
+        printf("Process %d Paused\n", pid);
         process->fork_id = pid;
         process->state = READY;
         addToReadyQueue(process);
     }
     for (int i = 1; i < 5; i++)
         free(args[i]);
-    free(queue);
-    signal(SIGUSR1, initializeProcesses);
 }
 
 /**

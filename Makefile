@@ -1,9 +1,6 @@
 # If you added a file to your project add it to the build section in the Makefile
 # Always start the line with a tab in Makefile, it is its syntax
 
-process_generator_deps = ./src/ds/queue.c
-scheduler_deps = ./src/scheduling_algorithms.c ./src/ds/priority_queue.c
-
 build:
 	gcc ./src/process_generator.c ./src/utils.c ./src/ds/queue.c -o ./bin/process_generator.out
 	gcc ./src/scheduler.c ./src/utils.c ./src/scheduling_algorithms.c ./src/ds/priority_queue.c -o ./bin/scheduler.out
