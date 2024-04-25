@@ -28,7 +28,6 @@ int main(int argc, char *argv[])
     ///==============================
     // data
     queue *processes_queue = create_queue();
-    SchedulerConfig* schedulerConfig = getSchedulerConfigInstance();
     ///==============================
 
     signal(SIGINT, clearResources);
@@ -37,11 +36,15 @@ int main(int argc, char *argv[])
     read_input_file(processes_queue);
 
     // 2. Ask the user for the chosen scheduling algorithm and its parameters, if there are any.
-    get_scheduling_algo(schedulerConfig);
+    int algorithm_choosen = -1, quantum_time = 0;
+    get_scheduling_algo(&algorithm_choosen, &quantum_time);
 
     // 3. Initiate and create the scheduler and clock processes.
+    int scheduler_id = start_program(scheduler_file_name, 2, algorithm_choosen, quantum_time);
+    int clk_id = start_program(clk_file_name, 0);
+
     // 4. Use this function after creating the clock process to initialize clock
-    // initClk();
+    initClk();
     // To get time use this
     // int x = getClk();
     // printf("current time is %d\n", x);
@@ -77,12 +80,15 @@ int main(int argc, char *argv[])
     killpg(getpgrp(), SIGKILL);
 
     // 7. Clear clock resources
-    // destroyClk(true);
+    destroyClk(true);
 }
 
 void clearResources(int signum)
 {
-    // TODO Clears all resources in case of interruption
+    msgctl(msgq_id, IPC_RMID, (struct msqid_ds *)0);
+    printf("\nIPC resources for process generator was cleared.\n");
+    printf("\nProcess Generator is terminating\n");
+    exit(0);
 }
 
 /**
@@ -115,12 +121,11 @@ void read_input_file(queue *processes_queue)
 
 /**
  * get_scheduling_algo - read the scheduling algo and its parameters
- * @algo: a pointer to store the chosen algo
- * @quantum: a pointer to store the round robin quantum if it was choosen
+ * @algorithm_choosen: a pointer to store the chosen algo
+ * @quantum_time: a pointer to store the round robin quantum if it was choosen
 */
-void get_scheduling_algo(SchedulerConfig *schedulerConfig)
+void get_scheduling_algo(int *algorithm_choosen, int *quantum_time)
 {
-    int choice = -1;
     printf("\n");
 read_algo:
     printf("Enter your choice for the Scheduling Algorithm\n");
@@ -129,22 +134,21 @@ read_algo:
     printf("3 for Round Robin\n");
     printf("Your choice: ");
 
-    scanf("%d", &choice);
-    if (choice < 1 || choice > 3)
+    scanf("%d", algorithm_choosen);
+    if ((*algorithm_choosen) < 1 || (*algorithm_choosen) > 3)
     {
         printf("\nInvalid input, try again\n\n");
         goto read_algo;
     }
-    schedulerConfig->selected_algorithm = (scheduling_algo)choice;
 
 read_quantum:
-    if (choice == 3)
+    if ((*algorithm_choosen) == 3)
     {
         printf("\nEnter the quantum size of Round Robin: ");
-        scanf("%d", schedulerConfig->quantum);
+        scanf("%d", quantum_time);
     }
 
-    if (schedulerConfig->quantum < 0)
+    if ((*quantum_time) < 0)
     {
         printf("\nInvalid input, try again\n");
         goto read_quantum;

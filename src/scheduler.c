@@ -1,7 +1,26 @@
-#include "headers.h"
+#include "clk.h"
+#include "header.h"
 
+/**
+ * getSchedulerConfigInstance - Function to get the singleton instance of SchedulerConfig.
+ * @return Pointer to the instance.
+ *
+ * Description: This function returns a pointer to the singleton instance of the SchedulerConfig
+ *              structure, ensuring that only one instance exists throughout the program.
+ */
+SchedulerConfig *getSchedulerConfigInstance()
+{
+    // Declare the static instance of the singleton
+    static SchedulerConfig instance = {.quantum = 0, .curr_quantum = 0};
 
-int main(int argc, char * argv[])
+    // Return a pointer to the instance
+    return &instance;
+}
+
+// To be accessed by signal handlers
+pqueue_t **ready_queue;
+
+int main(int argc, char *argv[])
 {
     if (argc != 3)
     {
@@ -138,7 +157,7 @@ void initializeProcesses(int signum)
     }
     for (int i = 1; i < 5; i++)
         free(args[i]);
-
+    free(queue);
     signal(SIGUSR1, initializeProcesses);
 }
 

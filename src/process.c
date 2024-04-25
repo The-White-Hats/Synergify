@@ -1,9 +1,11 @@
-#include "headers.h"
+#include "clk.h"
+#include "header.h"
 
 /* Modify this file as needed*/
-int remainingtime;
+int remaining_time;
+int prev_time;
 
-int main(int agrc, char * argv[])
+int main(int argc, char * argv[])
 {
     // Sleep till the scheduler wakes me up
     if (argc != 5) {
@@ -13,7 +15,8 @@ int main(int agrc, char * argv[])
 
     // initialize the clk and set the previous time step
     initClk();
-    
+    prev_time = getClk();
+
     //TODO it needs to get the remaining time from somewhere
     remaining_time = atoi(argv[3]);
 
@@ -22,10 +25,14 @@ int main(int agrc, char * argv[])
   
     while (remaining_time > 0)
     {
-        // remainingtime = ??;
+        if (getClk() == prev_time) continue;
+        remaining_time -= 1;
+        prev_time = getClk();
     }
-    
+
+    // Send a signal to the scheduler to inform it that this process did finish
+    kill(getppid(), SIGCHLD);
+
     destroyClk(false);
-    
     return 0;
 }

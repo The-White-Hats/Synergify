@@ -1,4 +1,4 @@
-#include "headers.h"
+#include "header.h"
 
 //! syntax modification when merging with others for process variable data members
 
@@ -20,135 +20,99 @@ void resetCurrentQuantum(SchedulerConfig *schedulerConfig)
 }
 
 /**
- * updateCurrentProcess - update the current process data
- *
- * @param head: Pointer to the pointer to the head of the priority queue.
- * @param current_process: Pointer to the current running process by the cpu.
- * just for code simplification.
- */
-
-void updateCurrentProcess(pqueue_t **head, rprocess_t *current_process)
-{
-    if (current_process == NULL)
-        current_process = (rprocess_t *)(sizeof(rprocess_t));
-    current_process->process = (*head)->process;
-    current_process->priority = (*head)->priority;
-    pop(head);
-}
-
-/**
  * scheduleRR - Runs the Round Robin algorithm
  *
  * @param head: Pointer to the pointer to the head of the priority queue.
- * @param current_process: Pointer to the current running process by the cpu.
- * @param schedulerConfig: Pointer to the schedular configuration.
- * Description:
- * checks for null value for queue or the head of the queue
- * check if their is a running process to push it back and take a new one or take a new one immediately
- * update the current_process data
- * checks for the remaining time to send a termination signal to the schedular
+ *
+ * Description: Checks if their is a running process and decrease the quantum.
+ *              If the set quantum ends, we return the process to the back of
+ *              the queue and reset the quantum.
  */
-void scheduleRR(pqueue_t **head, rprocess_t *current_process)
+void scheduleRR(pqueue_t **head)
 {
+    pqueue_t *running_process;
     SchedulerConfig *schedulerConfig = getSchedulerConfigInstance();
     if (head == NULL)
     {
         fprintf(stderr, "Can't pop an empty queue\n");
         exit(EXIT_FAILURE);
     }
+    running_process = *head;
 
-    if (*head == NULL)
+    // Return if there is no running process
+    if (running_process == NULL)
         return;
 
-    if (current_process == NULL)
-    {
-        updateCurrentProcess(head, current_process);
-        resetCurrentQuantum(schedulerConfig);
-    }
-    else if (schedulerConfig->curr_quantum == 0)
-    {
-        push(head, current_process->process, current_process->priority);
-        updateCurrentProcess(head, current_process);
-        resetCurrentQuantum(schedulerConfig);
-    }
-
     decrementCurrentQuantum(schedulerConfig);
-    decrementRemainingCPUTime(current_process->process);
-
-    if (current_process->process->runtime == 0)
+    if (schedulerConfig->curr_quantum == 0)
     {
-        current_process = NULL;
-        // TODO: send termination signal.
+        // TODO:
+        // 1. Send Sleep Signal To Running Process.
+
+        // 2. Push Process To The Back Of The Queue.
+        push(head, running_process->process, running_process->priority);
+        pop(head);
+        // 3. Reset Quantum.
+        resetCurrentQuantum(schedulerConfig);
     }
 }
 
 /**
- * scheduleSRTF - Runs the shortest remaining time first algorithm
+ * scheduleSRTN - Runs the shortest remaining time first algorithm
  *
  * @param head: Pointer to the pointer to the head of the priority queue.
- * @param current_process: Pointer to the current running process by the cpu.
  *
- * Description: checks for null value for queue or the head of the queue.
- *              if their is no running process it gets one from the queue.
- *              else if a new process came but with less remaining time "which is the priority here" we switch between them and push the current to the queue again.
- *              update the priority of the current process as it represent the remaining time of the process.
- *              checks for the remaining time to send a termination signal to the schedular.
+ * Description: Checks if their is a running process and decrease its priority
+ *              as it indicates its remaining running time.
  */
-void scheduleSRTN(pqueue_t **head, rprocess_t *current_process)
+void scheduleSRTN(pqueue_t **head)
 {
+    pqueue_t *running_process;
     if (head == NULL)
     {
         fprintf(stderr, "Can't pop an empty queue\n");
         exit(EXIT_FAILURE);
     }
-
-    if (*head == NULL)
+    running_process = *head;
+    if (running_process == NULL)
         return;
 
-    if (current_process == NULL)
-        updateCurrentProcess(head, current_process);
-    else if ((*head)->priority < current_process->priority)
-    {
-        push(head, current_process->process, current_process->priority);
-        updateCurrentProcess(head, current_process);
-    }
-
-    current_process->priority--;
-    decrementRemainingCPUTime(current_process->process);
-
-    if (current_process->process->runtime == 0)
-    {
-        current_process = NULL;
-        // TODO: send termination signal.
-    }
+    // Decrease The Running Process Runtime.
+    running_process->priority--;
 }
 
 /**
  * scheduleHPF - Schedule a process using the Highest Priority First (HPF) algorithm (non-preemptive).
  * @param head: Pointer to the head of the priority queue.
- * @param current_process: Pointer to the current process being scheduled.
  *
- * Description: Implements scheduling logic for HPF algorithm (non-preemptive).
- *              Decrements current process's remaining CPU time, updates if finished, and handles edge cases.
+ * Description: Useless for now
  */
-void scheduleHPF(pqueue_t **head, rprocess_t *current_process)
+void scheduleHPF(pqueue_t **head)
 {
     if (head == NULL)
     {
         fprintf(stderr, "Can't pop an empty queue\n");
         exit(EXIT_FAILURE);
     }
+}
 
-    if (*head == NULL)
-        return;
+/**
+ * contentSwitch - Switches context to the next process
+ *
+ * @param new_front: PID of the new front process
+ * @param old_front: PID of the old front process
+ *
+ * Description: Stops the old front process and continues the new front process.
+ *              If the new front process is -1, it means there's no new front process to switch to.
+ */
+void contentSwitch(PCB* new_front, PCB* old_front) {
+    if (new_front == NULL) return;
 
-    if (current_process == NULL)
-        updateCurrentProcess(head, current_process);
-
-    decrementRemainingCPUTime(current_process->process);
-    if (current_process->process->runtime == 0)
-    {
-        current_process = NULL;
-        // TODO: send termination signal.
+    if (old_front != NULL) {
+        old_front->state = READY;
+        kill(old_front->fork_id, SIGSTOP);
     }
+    printf("Current running process: %d\n", new_front->fork_id);
+    new_front->state = RUNNING;
+    kill(new_front->fork_id, SIGCONT);
 }

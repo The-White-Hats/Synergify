@@ -1,6 +1,6 @@
 #pragma once
 /**
- * queue - queue for the process_info_t
+ * queue - data structure that represent "first in, first out (FIFO)"   
 */
 typedef struct queue_s queue;
 
