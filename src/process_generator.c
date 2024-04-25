@@ -1,14 +1,13 @@
-#include "header.h"
 #include "clk.h"
+#include "header.h"
 #include "./ds/queue.h"
 #include <stdarg.h>
 
 
 ///==============================
 // constants related to process_generator
-#define PATH_SIZE 256
-const char *scheduler_file_name = "scheduler.out";
-const char *clk_file_name = "clk.out";
+const char *scheduler_file_name = "scheduler.out\0";
+const char *clk_file_name = "clk.out\0";
 ///==============================
 
 ///==============================
@@ -17,7 +16,6 @@ void clearResources(int);
 void read_input_file(queue *);
 void get_scheduling_algo(int *algorithm_choosen, int *quantum_time);
 int start_program(const char *const file_name, int n, ...);
-void append_to_path(char *const absolute_path, const char *const file_name);
 ///==============================
 
 ///==============================
@@ -77,10 +75,9 @@ int main(int argc, char *argv[])
         if (send_signal)
             kill(scheduler_id, SIGUSR1);
     }
-
-    kill(scheduler_id, SIGCHLD);
-
     raise(SIGSTOP);
+
+    killpg(getpgrp(), SIGKILL);
 
     // 7. Clear clock resources
     destroyClk(true);
@@ -99,7 +96,10 @@ void clearResources(int signum)
  */
 void read_input_file(queue *processes_queue)
 {
-    FILE *input_file = fopen("./processes.txt", "r");
+    FILE *input_file;
+    char file_path[PATH_SIZE];
+    getAbsolutePath(file_path, "processes.txt");
+    input_file = fopen(file_path, "r");
     if (!input_file)
     {
         printf("\nCould not open file processes.txt!!\n");
@@ -180,8 +180,7 @@ int start_program(const char *const file_name, int n, ...)
         int error;
 
         // get the current working directory.
-        getcwd(absolute_path, sizeof(absolute_path));
-        append_to_path(absolute_path, file_name);
+        getAbsolutePath(absolute_path, file_name);
 
         // if we would execute scheduler, then pass to it some arguments.
         if (strcmp(file_name, scheduler_file_name) == 0)
@@ -222,27 +221,4 @@ int start_program(const char *const file_name, int n, ...)
     }
     
     return process_id;
-}
-
-/**
- * append_to_path - takes a file_name and appends it to an absolute_path.
- *
- * @file_name: name of the file to append.
-*/
-void append_to_path(char *const absolute_path, const char *const file_name)
-{
-    int i = 0, j = 0;
-
-    while (absolute_path[i] != '\0')
-        i++;
-
-    // append /bin/ to the path.
-    absolute_path[i++] = '/';
-    absolute_path[i++] = 'b';
-    absolute_path[i++] = 'i';
-    absolute_path[i++] = 'n';
-    absolute_path[i++] = '/';
-
-    while (file_name[j] != '\0')
-        absolute_path[i++] = file_name[j++];
 }

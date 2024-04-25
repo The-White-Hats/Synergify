@@ -17,6 +17,8 @@
 #include <stdarg.h>
 #include "ds/priority_queue.h"
 
+#define PATH_SIZE 256
+
 ///==============================
 // Structs & Enums
 
@@ -34,7 +36,6 @@ typedef struct process_info_s
 {
 
     int id;
-    pid_t fork_id;
     int arrival;
     int runtime;
     int priority;
@@ -122,9 +123,19 @@ typedef struct
     int curr_quantum;
 } SchedulerConfig;
 
+//============================================Utils==============================================//
+
+/**
+ * getAbsolutePath - takes a file_name and appends it to an absolute_path.
+ *
+ * @absolute_path: pointer to the buffer where the absolute path will be stored.
+ * @file_name: name of the file to append.
+ */
+void getAbsolutePath(char *const absolute_path, const char *const file_name);
+
 //===========================================Process=============================================//
 
-//=======================================Scheduler=========================================//
+//==========================================Scheduler============================================//
 
 /**
  * getSchedulerConfigInstance - Function to get the singleton instance of SchedulerConfig.

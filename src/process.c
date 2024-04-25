@@ -7,6 +7,7 @@ int prev_time;
 
 int main(int argc, char * argv[])
 {
+    // Sleep till the scheduler wakes me up
     if (argc != 5) {
         perror("Use: ./process <id> <arrival_time> <running_time> <priority>");
         exit(EXIT_FAILURE);
@@ -20,12 +21,6 @@ int main(int argc, char * argv[])
     remaining_time = atoi(argv[3]);
 
     printf("process id: %s\n", argv[1]);
-    printf("process id: %s\n", argv[2]);
-    printf("process id: %s\n", argv[3]);
-    printf("process id: %s\n", argv[4]);
-
-    // Sleep till the scheduler wakes me up
-    raise(SIGSTOP);
     //printf("Process %d awakened\n", getpid());
   
     while (remaining_time > 0)
