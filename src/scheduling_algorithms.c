@@ -97,6 +97,15 @@ void scheduleHPF(pqueue_t **head)
 }
 
 /**
+ * addLog - add new log line to the log file
+ */
+
+void addLog(FILE *file, int currentTime, int processId, char *state, int arrivalTime, int totalRuntime, int remainingTime, int waitingTime)
+{
+    fprintf(file, "At time %d process %d %s arr %d total %d remain %d wait %d\n", currentTime, processId, state, arrivalTime, totalRuntime, totalRuntime, currentTime - arrivalTime);
+}
+
+/**
  * contentSwitch - Switches context to the next process
  *
  * @param new_front: PID of the new front process
@@ -105,14 +114,55 @@ void scheduleHPF(pqueue_t **head)
  * Description: Stops the old front process and continues the new front process.
  *              If the new front process is -1, it means there's no new front process to switch to.
  */
-void contentSwitch(PCB* new_front, PCB* old_front) {
-    if (new_front == NULL) return;
-
-    if (old_front != NULL) {
+void contentSwitch(PCB *new_front, PCB *old_front, int currentTime, FILE *file)
+{
+    if (new_front == NULL)
+        return;
+    if (old_front != NULL)
+    {
+        old_front->last_stop_time = currentTime;
+        int remaining_time = old_front->runtime - (currentTime - old_front->start_time - old_front->waiting_time);
+        addLog(file,
+               currentTime,
+               old_front->file_id,
+               "stopped",
+               old_front->arrival,
+               old_front->runtime,
+               remaining_time,
+               old_front->waiting_time);
         old_front->state = READY;
         kill(old_front->fork_id, SIGSTOP);
     }
-    printf("Current running process: %d\n", new_front->fork_id);
+    // started or resumed
+
+    new_front->waiting_time += currentTime - new_front->last_stop_time;
+
+    if (new_front->state == NEWBIE)
+    {
+        new_front->start_time = currentTime;
+        addLog(file,
+               currentTime,
+               new_front->file_id,
+               "started",
+               new_front->arrival,
+               new_front->runtime,
+               new_front->runtime,
+               new_front->waiting_time);
+    }
+    else if (new_front->state == READY)
+    {
+        int remaining_time = new_front->runtime - (currentTime - new_front->start_time - new_front->waiting_time);
+        addLog(file,
+               currentTime,
+               new_front->file_id,
+               "resumed",
+               new_front->arrival,
+               new_front->runtime,
+               remaining_time,
+               new_front->waiting_time);
+    }
+
+    printf("Current running process: %d , current time: %d\n", new_front->fork_id, currentTime);
     new_front->state = RUNNING;
     kill(new_front->fork_id, SIGCONT);
 }
