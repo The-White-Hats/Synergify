@@ -1,4 +1,6 @@
 #include "header.h"
+#include "ds/fib_heap.h"
+#include "ds/queue.h"
 
 //! syntax modification when merging with others for process variable data members
 
@@ -20,24 +22,18 @@ void resetCurrentQuantum(SchedulerConfig *schedulerConfig)
 }
 
 /**
- * scheduleRR - Runs the Round Robin algorithm
+ * scheduleSRTN - Runs the shortest remaining time first algorithm
  *
- * @param head: Pointer to the pointer to the head of the priority queue.
+ * @param head: Pointer to the ready_queue.
  *
- * Description: Checks if their is a running process and decrease the quantum.
- *              If the set quantum ends, we return the process to the back of
- *              the queue and reset the quantum.
+ * Description: Checks if their is a running process and decrease its priority
+ *              as it indicates its remaining running time.
  */
-void scheduleRR(pqueue_t **head)
+void scheduleRR(void *head)
 {
-    pqueue_t *running_process;
+    queue_t *queue = (queue_t *)head;
+    PCB *running_process = (PCB *)front(queue);
     SchedulerConfig *schedulerConfig = getSchedulerConfigInstance();
-    if (head == NULL)
-    {
-        fprintf(stderr, "Can't pop an empty queue\n");
-        exit(EXIT_FAILURE);
-    }
-    running_process = *head;
 
     // Return if there is no running process
     if (running_process == NULL)
@@ -46,13 +42,10 @@ void scheduleRR(pqueue_t **head)
     decrementCurrentQuantum(schedulerConfig);
     if (schedulerConfig->curr_quantum == 0)
     {
-        // TODO:
-        // 1. Send Sleep Signal To Running Process.
-
-        // 2. Push Process To The Back Of The Queue.
-        push(head, running_process->process, running_process->priority);
-        pop(head);
-        // 3. Reset Quantum.
+        // 1. Push Process To The Back Of The Queue.
+        enqueue(queue, running_process);
+        dequeue(queue);
+        // 2. Reset Quantum.
         resetCurrentQuantum(schedulerConfig);
     }
 }
@@ -60,40 +53,41 @@ void scheduleRR(pqueue_t **head)
 /**
  * scheduleSRTN - Runs the shortest remaining time first algorithm
  *
- * @param head: Pointer to the pointer to the head of the priority queue.
+ * @param head: Pointer to the ready_queue.
  *
- * Description: Checks if their is a running process and decrease its priority
+ * Description: Checks if their is a running process and decrements its key
  *              as it indicates its remaining running time.
  */
-void scheduleSRTN(pqueue_t **head)
+void scheduleSRTN(void *head)
 {
-    pqueue_t *running_process;
-    if (head == NULL)
-    {
-        fprintf(stderr, "Can't pop an empty queue\n");
-        exit(EXIT_FAILURE);
-    }
-    running_process = *head;
-    if (running_process == NULL)
+    fib_heap_t *heap = (fib_heap_t *) head;
+    heap_node_t *min = heap->min;
+
+    if (min == NULL)
         return;
 
     // Decrease The Running Process Runtime.
-    running_process->priority--;
+    if (min->key > 0)
+        min->key--;
 }
 
 /**
  * scheduleHPF - Schedule a process using the Highest Priority First (HPF) algorithm (non-preemptive).
- * @param head: Pointer to the head of the priority queue.
+ * @param head: Pointer to the ready_queue.
  *
- * Description: Useless for now
+ * Description: Checks if their is a running process and decrease its key
+ *              as it indicates its priority.
  */
-void scheduleHPF(pqueue_t **head)
+void scheduleHPF(void *head)
 {
-    if (head == NULL)
-    {
-        fprintf(stderr, "Can't pop an empty queue\n");
-        exit(EXIT_FAILURE);
-    }
+    fib_heap_t *heap = (fib_heap_t *) head;
+    PCB *running_process = fib_heap_min(heap);
+
+    if (running_process == NULL)
+        return;
+
+    // Decrease The Running Process Key value to make sure it is never replaced.
+    fib_heap_decrease_min_key(heap, 0);
 }
 
 /**
@@ -131,7 +125,7 @@ void contentSwitch(PCB *new_front, PCB *old_front, int currentTime, FILE *file)
                remaining_time,
                old_front->waiting_time);
         old_front->state = READY;
-        kill(old_front->fork_id, SIGSTOP);
+        kill(old_front->fork_id, SIGUSR1);
     }
     // started or resumed
 
