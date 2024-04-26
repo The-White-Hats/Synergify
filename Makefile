@@ -2,7 +2,7 @@
 # Always start the line with a tab in Makefile, it is its syntax
 
 process_generator_deps = ./src/ds/queue.c ./src/utils.c
-scheduler_deps = ./src/scheduling_algorithms.c ./src/ds/priority_queue.c ./src/utils.c
+scheduler_deps = ./src/scheduling_algorithms.c ./src/ds/queue.c ./src/ds/fib_heap.c ./src/utils.c
 
 build:
 	gcc ./src/process_generator.c ${process_generator_deps} -o ./bin/process_generator.out
