@@ -61,19 +61,19 @@ int main(int argc, char *argv[])
     }
 
     // Open file for writing
-    logFile = fopen("schedular.log", "w");
+    logFile = fopen("scheduler.log", "w");
     FILE *perf = fopen("scheduler.perf", "w");
 
     // Check if the file was opened successfully
     if (logFile == NULL)
     {
-        printf("Error opening schedular.logFile!\n");
+        printf("Error opening scheduler.log!\n");
         return 1;
     }
     // Check if the file was opened successfully
     if (perf == NULL)
     {
-        printf("Error opening schedular.perf!\n");
+        printf("Error opening scheduler.perf!\n");
         return 1;
     }
 
@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
 
     // Set signal handlers for process initialization and termination
     signal(SIGUSR1, initializeProcesses);
-    signal(SIGCHLD, terminateRunningProcess);
+    signal(SIGRTMIN + 1, terminateRunningProcess);
     signal(SIGUSR2, noMoreProcesses);
 
     // Get instance of scheduler configuration and set it
@@ -111,6 +111,7 @@ int main(int argc, char *argv[])
         // Handle context switching if the queue front changed
         generateProcesses();
         PCB *front_process = (*ready_queue == NULL ? NULL : ((PCB *)((*ready_queue)->process)));
+
         if (((running_process != NULL) != (front_process != NULL)) || (running_process && running_process->fork_id != front_process->fork_id))
         {
             printf("Context Switching\n");
@@ -274,7 +275,7 @@ void terminateRunningProcess(int signum)
     printQueue(ready_queue);
 
     waitpid(process_id, &stat_loc, 0);
-    signal(SIGCHLD, terminateRunningProcess);
+    signal(SIGRTMIN + 1, terminateRunningProcess);
 }
 
 /**

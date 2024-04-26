@@ -39,13 +39,13 @@ int main(int argc, char * argv[])
     while (remaining_time > 0)
     {
         if (getClk() == prev_time) continue;
-        printf("Process.c #%s decremented to %d\n", argv[1], remaining_time);
         remaining_time -= 1;
+        printf("Process.c #%s decremented to %d\n", argv[1], remaining_time);
         prev_time = getClk();
     }
 
     // Send a signal to the scheduler to inform it that this process did finish
-
+    kill(getppid(),SIGRTMIN + 1);
     destroyClk(false);
     printf("process.c #%s finished\n", argv[1]);
     return 0;

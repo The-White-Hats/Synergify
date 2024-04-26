@@ -73,7 +73,6 @@ typedef enum
  * process_state - Enumeration representing different state of a process
  * @RUNNING: process currently running of CPU
  * @READY: in the ready queue, waiting to get the CPU
- * @FINISHED: finished its execution
  * @NEWBIE: didn't start yet
  * Description: Enumeration representing different state a process could be in
  */

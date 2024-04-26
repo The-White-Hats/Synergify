@@ -121,7 +121,7 @@ void contentSwitch(PCB *new_front, PCB *old_front, int currentTime, FILE *file)
     if (old_front != NULL)
     {
         old_front->last_stop_time = currentTime;
-        int remaining_time = old_front->runtime - (currentTime - old_front->start_time - old_front->waiting_time);
+        int remaining_time = old_front->runtime - (currentTime - old_front->arrival - old_front->waiting_time);
         addLog(file,
                currentTime,
                old_front->file_id,
@@ -151,7 +151,7 @@ void contentSwitch(PCB *new_front, PCB *old_front, int currentTime, FILE *file)
     }
     else if (new_front->state == READY)
     {
-        int remaining_time = new_front->runtime - (currentTime - new_front->start_time - new_front->waiting_time);
+        int remaining_time = new_front->runtime - (currentTime - new_front->arrival - new_front->waiting_time);
         addLog(file,
                currentTime,
                new_front->file_id,
