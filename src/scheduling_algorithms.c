@@ -100,6 +100,15 @@ void addLog(FILE *file, int currentTime, int processId, char *state, int arrival
 }
 
 /**
+ * addLog - add new log line to the log file
+ */
+
+void addLog(FILE *file, int currentTime, int processId, char *state, int arrivalTime, int totalRuntime, int remainingTime, int waitingTime)
+{
+    fprintf(file, "At time %d process %d %s arr %d total %d remain %d wait %d\n", currentTime, processId, state, arrivalTime, totalRuntime, totalRuntime, currentTime - arrivalTime);
+}
+
+/**
  * contentSwitch - Switches context to the next process
  *
  * @param new_front: PID of the new front process

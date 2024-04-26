@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
 
     // Set signal handlers for process initialization and termination
     signal(SIGUSR1, initializeProcesses);
-    signal(SIGCHLD, terminateRunningProcess);
+    signal(SIGRTMIN + 1, terminateRunningProcess);
     signal(SIGUSR2, noMoreProcesses);
     signal(SIGINT, clearResources);
 
@@ -374,6 +374,11 @@ static void generateProcesses()
     }
     for (int i = 1; i < 5; i++)
         free(args[i]);
+}
+
+void addFinishLog(FILE *file, int currentTime, int processId, char *state, int arrivalTime, int totalRuntime, int waitingTime, int TA, float WTA)
+{
+    fprintf(file, "At time %d process %d %s arr %d total %d remain %d wait %d TA %d WTA %.2f\n", currentTime, processId, state, arrivalTime, totalRuntime, 0, waitingTime, TA, WTA);
 }
 
 /**
