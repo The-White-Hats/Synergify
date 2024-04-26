@@ -12,7 +12,7 @@ int main() {
   process2.priority = 2;
   process2.runtime = 70;
 
-  queue* my_queue = create_queue();
+  queue_t* my_queue = create_queue();
 
   enqueue(my_queue, &process1);
   enqueue(my_queue, &process2);

@@ -29,16 +29,16 @@ typedef struct queue_s
 	queue_node_t *head;
 	queue_node_t *tail;
 	int size;
-} queue;
+} queue_t;
 
 /**
  * create_queue - Creates a new empty process information queue
  *
- * Return: A pointer to the newly created process information queue, or NULL if memory allocation fails
+ * @return A pointer to the newly created process information queue, or NULL if memory allocation fails
  */
-queue *create_queue()
+queue_t *create_queue()
 {
-	queue *my_queue = malloc(sizeof(queue));
+	queue_t *my_queue = malloc(sizeof(queue_t));
 	if (!my_queue)
 	{
 		exit(-1);
@@ -53,12 +53,12 @@ queue *create_queue()
 
 /**
  * enqueue - Enqueues a process into the queue
- * @queue: A pointer to the process information queue
- * @process: A pointer to the process information to be enqueued
+ * @param my_queue: A pointer to the process information queue
+ * @param data: A pointer to the process information to be enqueued
  *
- * Return: true if the process is enqueued successfully, otherwise false
+ * @return true if the process is enqueued successfully, otherwise false
  */
-bool enqueue(queue *my_queue, void *data)
+bool enqueue(queue_t *my_queue, void *data)
 {
 	queue_node_t* node = malloc(sizeof(queue_node_t));
 	if (!node)
@@ -80,11 +80,11 @@ bool enqueue(queue *my_queue, void *data)
 
 /**
  * dequeue - Dequeues a process from the queue
- * @queue: A pointer to the process information queue
+ * @param my_queue: A pointer to the process information queue
  *
- * Return: A pointer to the dequeued process information, or NULL if the queue is empty
+ * @return A pointer to the dequeued process information, or NULL if the queue is empty
  */
-void *dequeue(queue *my_queue)
+void *dequeue(queue_t *my_queue)
 {
 	if (!my_queue->head) return NULL;
 	void* data = my_queue->head->data;
@@ -98,11 +98,11 @@ void *dequeue(queue *my_queue)
 
 /**
  * front - Retrieves the process at the front of the queue without dequeuing it
- * @queue: A pointer to the process information queue
+ * @param my_queue: A pointer to the process information queue
  *
- * Return: A pointer to the process information at the front of the queue, or NULL if the queue is empty
+ * @return A pointer to the process information at the front of the queue, or NULL if the queue is empty
  */
-const void* front(queue* my_queue)
+const void* front(queue_t* my_queue)
 {
 	if (!my_queue->head) return NULL;
 
@@ -111,11 +111,11 @@ const void* front(queue* my_queue)
 
 /**
  * is_queue_empty - Checks if the queue is empty
- * @queue: A pointer to the process information queue
+ * @param my_queue: A pointer to the process information queue
  *
- * Return: true if the queue is empty, otherwise false
+ * @return true if the queue is empty, otherwise false
  */
-bool is_queue_empty(queue *my_queue)
+bool is_queue_empty(queue_t *my_queue)
 {
 	return my_queue->size == 0;
 }
