@@ -1,7 +1,6 @@
 #include "clk.h"
 #include "header.h"
-#include <signal.h>
-
+#include <math.h>
 /**
  * getSchedulerConfigInstance - Function to get the singleton instance of SchedulerConfig.
  * @return Pointer to the instance.
@@ -22,6 +21,37 @@ SchedulerConfig *getSchedulerConfigInstance()
 pqueue_t **ready_queue, **queue;
 void generateProcesses();
 bool endScheduler = false;
+
+float total_waiting_time = 0;             // sum of waiting times
+float total_weighted_turnaround_time = 0; // sum of weighted turnaround times
+float total_running_time = 0;             // sum of running times
+float *wta_values = NULL;                 // array of weighted turnaround times
+int total_processes = 0;                  // total number of processes that come so far
+int idx = 0;                              // index of the wta_values array
+int waste_time = 0;                       // cpu wasted time
+
+PCB *running_process = NULL;
+FILE *logFile;
+float calculate_std_wta()
+{
+    float mean = total_weighted_turnaround_time / total_processes;
+    float sum = 0.0;
+    for (int i = 0; i < total_processes; i++)
+    {
+        sum += pow(wta_values[i] - mean, 2);
+    }
+    float variance = sum / total_processes;
+    return sqrt(variance);
+}
+
+void addPref(FILE *file)
+{
+    fprintf(file, "CPU utilization = %.2f%%\n", (float)((total_running_time) / (float)getClk()) * 100.0);
+    fprintf(file, "Avg WTA = %.2f\n", total_weighted_turnaround_time / total_processes);
+    fprintf(file, "Avg Waiting = %.2f\n", total_waiting_time / total_processes);
+    fprintf(file, "STD WTA = %.2f\n", calculate_std_wta());
+}
+
 int main(int argc, char *argv[])
 {
     if (argc != 3)
@@ -29,6 +59,25 @@ int main(int argc, char *argv[])
         perror("Use: ./scheduler <scheduling_algo> <quantum>");
         exit(EXIT_FAILURE);
     }
+
+    // Open file for writing
+    logFile = fopen("schedular.log", "w");
+    FILE *perf = fopen("scheduler.perf", "w");
+
+    // Check if the file was opened successfully
+    if (logFile == NULL)
+    {
+        printf("Error opening schedular.logFile!\n");
+        return 1;
+    }
+    // Check if the file was opened successfully
+    if (perf == NULL)
+    {
+        printf("Error opening schedular.perf!\n");
+        return 1;
+    }
+
+    wta_values = malloc(sizeof(float) * total_processes);
 
     // Set signal handlers for process initialization and termination
     signal(SIGUSR1, initializeProcesses);
@@ -45,7 +94,7 @@ int main(int argc, char *argv[])
     void (*scheduleFunction[])(pqueue_t **) = {scheduleHPF, scheduleSRTN, scheduleRR};
 
     int selectedAlgorithmIndex = schedulerConfig->selected_algorithm - 1;
-    size_t prev_time = 0;
+    size_t prev_time = -1;
 
     ready_queue = malloc(sizeof(pqueue_t *));
     (*ready_queue) = NULL;
@@ -55,7 +104,7 @@ int main(int argc, char *argv[])
     initClk();
 
     printf("Scheduler id: %d\n", getpid());
-    PCB *running_process = NULL;
+
     while (1)
     {
         int curr_time = getClk();
@@ -65,7 +114,7 @@ int main(int argc, char *argv[])
         if (((running_process != NULL) != (front_process != NULL)) || (running_process && running_process->fork_id != front_process->fork_id))
         {
             printf("Context Switching\n");
-            contentSwitch(front_process, running_process);
+            contentSwitch(front_process, running_process, getClk(), logFile);
             running_process = front_process;
             if (selectedAlgorithmIndex == RR)
                 schedulerConfig->curr_quantum = schedulerConfig->quantum;
@@ -84,8 +133,11 @@ int main(int argc, char *argv[])
             break;
         }
     }
-
     printf("Generating Output files!!!!\n");
+    addPref(perf);
+
+    fclose(logFile);
+    fclose(perf);
 
     // Upon termination release the clock resources.
     destroyClk(false);
@@ -111,9 +163,11 @@ void initializeProcesses(int signum)
         PCB *process = NULL;
         process = malloc(sizeof(PCB));
         process->file_id = msgbuf.message.id;
-        process->arrival = msgbuf.message.arrival;
+        process->arrival = process->last_stop_time = msgbuf.message.arrival;
         process->runtime = msgbuf.message.runtime;
         process->priority = msgbuf.message.priority;
+        process->start_time = -1;
+        process->waiting_time = 0;
 
         push(queue, (void *)process, 0);
     }
@@ -121,8 +175,10 @@ void initializeProcesses(int signum)
     signal(SIGUSR1, initializeProcesses);
 }
 
-void generateProcesses() {
-    if (!(*queue)) return;
+void generateProcesses()
+{
+    if (!(*queue))
+        return;
     char *args[6];
     char absolute_path[PATH_SIZE];
     getAbsolutePath(absolute_path, "process.out");
@@ -131,8 +187,8 @@ void generateProcesses() {
     // Allocate memory for each string in args
     for (int i = 1; i < 5; i++)
         args[i] = (char *)malloc(12); // Assuming a 32-bit int can be at most 11 digits, plus 1 for null terminator
-
-    while ((*queue) != NULL) {
+    while ((*queue) != NULL)
+    {
         PCB *process = (PCB *)((*queue)->process);
         pop(queue);
         sprintf(args[1], "%d", process->file_id);
@@ -153,15 +209,20 @@ void generateProcesses() {
             perror("Couldn't use execvp");
             exit(EXIT_FAILURE);
         }
-        usleep(1500*1000);
+        usleep(100 * 1000);
 
-        printf("Process %d Paused\n", pid);
+        printf("Process %d Paused \n", pid);
         process->fork_id = pid;
-        process->state = READY;
+        process->state = NEWBIE;
         addToReadyQueue(process);
     }
     for (int i = 1; i < 5; i++)
         free(args[i]);
+}
+
+void addFinishLog(FILE *file, int currentTime, int processId, char *state, int arrivalTime, int totalRuntime, int waitingTime, int TA, float WTA)
+{
+    fprintf(file, "At time %d process %d %s arr %d total %d remain %d wait %d TA %d WTA %.2f\n", currentTime, processId, state, arrivalTime, totalRuntime, 0, waitingTime, TA, WTA);
 }
 
 /**
@@ -177,11 +238,38 @@ void terminateRunningProcess(int signum)
     pqueue_t **head = ready_queue;
     int stat_loc;
     pid_t process_id = ((PCB *)((*head)->process))->fork_id;
-    
+
     printQueue(ready_queue);
+
+    wta_values = realloc(wta_values, sizeof(float) * total_processes);
+    if (wta_values == NULL)
+    {
+        perror("Can not resize the array of WTA values");
+        exit(EXIT_FAILURE);
+    }
+
+    wta_values[idx] = (float)(getClk() - ((PCB *)((*head)->process))->arrival) / ((PCB *)((*head)->process))->runtime;
+
+    total_waiting_time += ((PCB *)((*head)->process))->waiting_time;
+    total_weighted_turnaround_time += wta_values[idx++];
+    total_running_time += ((PCB *)((*head)->process))->runtime;
 
     pop(head);
     ready_queue = head;
+    addFinishLog(logFile,
+                 getClk(),
+                 running_process->file_id,
+                 "finished",
+                 running_process->arrival,
+                 running_process->runtime,
+                 running_process->waiting_time,
+                 getClk() - running_process->arrival,
+                 (float)(getClk() - running_process->arrival) / running_process->runtime);
+
+    free(running_process);
+
+    running_process = NULL;
+
     printf("Process %d Terminated at %d.\n", process_id, getClk());
     printQueue(ready_queue);
 
@@ -222,6 +310,7 @@ void addToReadyQueue(PCB *process)
         break;
     }
     ready_queue = head;
+    total_processes++;
 }
 
 /**
@@ -232,13 +321,16 @@ void noMoreProcesses(int signum)
     endScheduler = true;
 }
 
-void printQueue(pqueue_t** head) {
-  pqueue_t*temp = *head;
-  while(temp) {
-    PCB* process = (PCB*)(temp->process);
-    printf("(%d, %d, %d)", process->file_id, process->priority, process->runtime);
-    if (temp->next) printf("->");
-    temp = temp->next;
-  }
-  printf("\n");
+void printQueue(pqueue_t **head)
+{
+    pqueue_t *temp = *head;
+    while (temp)
+    {
+        PCB *process = (PCB *)(temp->process);
+        printf("(%d, %d, %d)", process->file_id, process->priority, process->runtime);
+        if (temp->next)
+            printf("->");
+        temp = temp->next;
+    }
+    printf("\n");
 }
