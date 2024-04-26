@@ -6,4 +6,5 @@ WORKDIR /home/synergify
 COPY . /home/synergify/
 
 RUN apt-get update && \
-    apt-get install htop gcc make -y
+    apt-get install htop gcc make -y && \
+    apt-get install valgrind
