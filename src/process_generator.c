@@ -1,8 +1,10 @@
 #include "clk.h"
 #include "header.h"
+#include "clk.h"
 #include "./ds/queue.h"
 #include <stdarg.h>
 #include <unistd.h>
+
 
 
 ///==============================
@@ -85,6 +87,7 @@ int main(int argc, char *argv[])
     
     kill(scheduler_id, SIGUSR2);
     pause();
+
     // 7. Clear clock resources
     destroyClk(true);
 }

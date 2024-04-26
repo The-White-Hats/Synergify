@@ -139,6 +139,7 @@ void generateProcesses() {
         sprintf(args[2], "%d", process->arrival);
         sprintf(args[3], "%d", process->runtime);
         sprintf(args[4], "%d", process->priority);
+
         printf("Generating Process #%d\n", process->file_id);
         pid_t pid = fork();
         if (pid == -1)
