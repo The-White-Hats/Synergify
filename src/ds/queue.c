@@ -12,8 +12,8 @@
 typedef struct queue_node_s queue_node_t;
 typedef struct queue_node_s
 {
-	void* data;
-	queue_node_t* next;
+	void *data;
+	queue_node_t *next;
 } queue_node_t;
 
 /**
@@ -60,7 +60,7 @@ queue_t *create_queue()
  */
 bool enqueue(queue_t *my_queue, void *data)
 {
-	queue_node_t* node = malloc(sizeof(queue_node_t));
+	queue_node_t *node = malloc(sizeof(queue_node_t));
 	if (!node)
 	{
 		return false;
@@ -69,9 +69,12 @@ bool enqueue(queue_t *my_queue, void *data)
 	node->data = data;
 	node->next = NULL;
 
-	if (my_queue->tail == NULL) {
+	if (my_queue->tail == NULL)
+	{
 		my_queue->head = node;
-	} else my_queue->tail->next = node;
+	}
+	else
+		my_queue->tail->next = node;
 	my_queue->tail = node;
 	my_queue->size += 1;
 
@@ -86,13 +89,16 @@ bool enqueue(queue_t *my_queue, void *data)
  */
 void *dequeue(queue_t *my_queue)
 {
-	if (!my_queue->head) return NULL;
-	void* data = my_queue->head->data;
-	queue_node_t* next = my_queue->head->next;
+	if (!my_queue->head)
+		return NULL;
+	void *data = my_queue->head->data;
+	queue_node_t *next = my_queue->head->next;
 
 	free(my_queue->head);
 	my_queue->head = next;
 	my_queue->size -= 1;
+	if (my_queue->size == 0)
+		my_queue->tail = NULL;
 	return data;
 }
 
@@ -102,11 +108,12 @@ void *dequeue(queue_t *my_queue)
  *
  * @return A pointer to the process information at the front of the queue, or NULL if the queue is empty
  */
-const void* front(queue_t* my_queue)
+const void *front(queue_t *my_queue)
 {
-	if (!my_queue->head) return NULL;
+	if (!my_queue->head)
+		return NULL;
 
-	return (const void*)(my_queue->head->data);
+	return (const void *)(my_queue->head->data);
 }
 
 /**
@@ -118,4 +125,22 @@ const void* front(queue_t* my_queue)
 bool is_queue_empty(queue_t *my_queue)
 {
 	return my_queue->size == 0;
+}
+
+/**
+ * queue_free - Frees all memory allocated for the queue elements
+ * @param my_queue: A pointer to the queue
+ *
+ * Description: This function iteratively dequeues each element from the queue and frees its memory.
+ */
+void queue_free(queue_t *my_queue)
+{
+	if (!my_queue)
+		return;
+	void *data = dequeue(my_queue);
+	while (data)
+	{
+		free(data);
+		data = dequeue(my_queue);
+	}
 }

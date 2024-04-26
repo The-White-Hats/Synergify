@@ -1,4 +1,6 @@
 #pragma once
+#include <stdbool.h>
+
 /**
  * queue_t - data structure that represent "first in, first out (FIFO)"   
 */
@@ -43,3 +45,11 @@ const void* front(queue_t* my_queue);
  * @return a boolean that indicated the result of the check
 */
 bool is_queue_empty(queue_t* my_queue);
+
+/**
+ * queue_free - Frees all memory allocated for the queue elements
+ * @param my_queue: A pointer to the queue
+ *
+ * Description: This function iteratively dequeues each element from the queue and frees its memory.
+ */
+void queue_free(queue_t *my_queue);
