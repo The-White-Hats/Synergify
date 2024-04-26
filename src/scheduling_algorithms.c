@@ -110,9 +110,9 @@ void contentSwitch(PCB* new_front, PCB* old_front) {
 
     if (old_front != NULL) {
         old_front->state = READY;
-        kill(old_front, SIGSTOP);
+        kill(old_front->fork_id, SIGSTOP);
     }
-    printf("Current running process: %d\n", new_front);
+    printf("Current running process: %d\n", new_front->fork_id);
     new_front->state = RUNNING;
-    kill(new_front, SIGCONT);
+    kill(new_front->fork_id, SIGCONT);
 }

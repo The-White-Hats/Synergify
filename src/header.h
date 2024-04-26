@@ -12,7 +12,12 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
+#include <errno.h>
+#include <string.h>
+#include <stdarg.h>
 #include "ds/priority_queue.h"
+
+#define PATH_SIZE 256
 
 ///==============================
 // Structs & Enums
@@ -31,11 +36,22 @@ typedef struct process_info_s
 {
 
     int id;
-    pid_t fork_id;
     int arrival;
     int runtime;
     int priority;
 } process_info_t;
+
+/**
+ * struct msgbuf_s - Structure for the message sent through the message queue
+ * from the process_generator to the scheduler.
+ *
+ * @mytype: message header.
+ * @message: the actual message sent.
+ */
+typedef struct msgbuf_s {
+  long mytype;
+  process_info_t message;
+} msgbuf_t;
 
 /**
  * scheduling_algo - Enumeration representing different scheduling algorithms
@@ -107,9 +123,19 @@ typedef struct
     int curr_quantum;
 } SchedulerConfig;
 
+//============================================Utils==============================================//
+
+/**
+ * getAbsolutePath - takes a file_name and appends it to an absolute_path.
+ *
+ * @absolute_path: pointer to the buffer where the absolute path will be stored.
+ * @file_name: name of the file to append.
+ */
+void getAbsolutePath(char *const absolute_path, const char *const file_name);
+
 //===========================================Process=============================================//
 
-//=======================================Scheduler=========================================//
+//==========================================Scheduler============================================//
 
 /**
  * getSchedulerConfigInstance - Function to get the singleton instance of SchedulerConfig.
@@ -155,13 +181,19 @@ void initializeProcesses(int signum);
 void terminateRunningProcess(int signum);
 
 /**
+ * noMoreProcesses - Informs the scheduler that no more processes would be sent.
+ */
+void noMoreProcesses(int signum);
+
+
+/**
  * addToReadyQueue - Adds a process to the ready queue based on the scheduling algorithm.
  *
  * @param process: Pointer to the process to be added.
  *
  * Description: Adds a process to the ready queue based on the selected scheduling algorithm.
  */
-void addToReadyQueue(process_info_t *process);
+void addToReadyQueue(PCB *process);
 
 /**
  * scheduleSRTN - Runs the shortest remaining time first algorithm
@@ -200,4 +232,6 @@ void scheduleHPF(pqueue_t **head);
  * Description: Stops the old front process and continues the new front process.
  *              If the new front process is -1, it means there's no new front process to switch to.
  */
-void contentSwitch(pid_t new_front, pid_t old_front);
+void contentSwitch(PCB* new_front, PCB* old_front);
+
+void printQueue(pqueue_t** head);
