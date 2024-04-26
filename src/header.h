@@ -15,7 +15,6 @@
 #include <errno.h>
 #include <string.h>
 #include <stdarg.h>
-#include "ds/priority_queue.h"
 
 #define PATH_SIZE 256
 
@@ -161,68 +160,33 @@ typedef struct rprocess_s
 } rprocess_t;
 
 /**
- * initializeProcesses - Initializes processes based on the number of processes to be created.
- *
- * @param head: Pointer to the pointer to the head of the priority queue.
- * @param num_of_processes: Number of processes to be initialized.
- *
- * Description: On a received signal from the generator, initializes processes, forks them, 
- *              and adds them to the ready queue.
- */
-void initializeProcesses(int signum);
-
-/**
- * terminateRunningProcess - Terminates the currently running process
- *
- * @param signum: The signal number that triggered the termination.
- *
- * Description: Waits for the currently running process to terminate and then removes
- *              it from the ready queue.
- */
-void terminateRunningProcess(int signum);
-
-/**
- * noMoreProcesses - Informs the scheduler that no more processes would be sent.
- */
-void noMoreProcesses(int signum);
-
-
-/**
- * addToReadyQueue - Adds a process to the ready queue based on the scheduling algorithm.
- *
- * @param process: Pointer to the process to be added.
- *
- * Description: Adds a process to the ready queue based on the selected scheduling algorithm.
- */
-void addToReadyQueue(PCB *process);
-
-/**
  * scheduleSRTN - Runs the shortest remaining time first algorithm
  *
- * @param head: Pointer to the pointer to the head of the priority queue.
+ * @param head: Pointer to the ready_queue.
  *
  * Description: Checks if their is a running process and decrease its priority
  *              as it indicates its remaining running time.
  */
-void scheduleRR(pqueue_t **head);
+void scheduleRR(void *head);
 
 /**
  * scheduleSRTN - Runs the shortest remaining time first algorithm
  *
- * @param head: Pointer to the pointer to the head of the priority queue.
+ * @param head: Pointer to the ready_queue.
  *
- * Description: Checks if their is a running process and decrease its priority
+ * Description: Checks if their is a running process and decrements its key
  *              as it indicates its remaining running time.
  */
-void scheduleSRTN(pqueue_t **head);
+void scheduleSRTN(void *head);
 
 /**
  * scheduleHPF - Schedule a process using the Highest Priority First (HPF) algorithm (non-preemptive).
- * @param head: Pointer to the head of the priority queue.
+ * @param head: Pointer to the ready_queue.
  *
- * Description: Useless for now
+ * Description: Checks if their is a running process and decrease its key
+ *              as it indicates its priority.
  */
-void scheduleHPF(pqueue_t **head);
+void scheduleHPF(void *head);
 
 /**
  * contentSwitch - Switches context to the next process
@@ -235,4 +199,4 @@ void scheduleHPF(pqueue_t **head);
  *              If the new front process is -1, it means there's no new front process to switch to.
  */
 void contentSwitch(PCB *new_front, PCB *old_front, int currentTime, FILE *file);
-void printQueue(pqueue_t** head);
+//void printQueue(pqueue_t** head);

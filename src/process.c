@@ -10,19 +10,22 @@ int prev_time;
 ///==============================
 // functions
 void allocateCPU(int);
+void pauseProcess(int);
 ///==============================
 
-int main(int argc, char * argv[])
+int main(int argc, char *argv[])
 {
     ///==============================
     // bind signal handlers
     signal(SIGCONT, allocateCPU);
+    signal(SIGUSR1, pauseProcess);
     ///==============================
 
     // Sleep till the scheduler wakes me up
     pause();
-  
-    if (argc != 5) {
+
+    if (argc != 5)
+    {
         perror("Use: ./process <id> <arrival_time> <running_time> <priority>");
         exit(EXIT_FAILURE);
     }
@@ -31,10 +34,10 @@ int main(int argc, char * argv[])
     initClk();
     prev_time = getClk();
 
-    //TODO it needs to get the remaining time from somewhere
+    // TODO it needs to get the remaining time from somewhere
     remaining_time = atoi(argv[3]);
 
-    //printf("Process %d awakened\n", getpid());
+    // printf("Process %d awakened\n", getpid());
     printf("process id: %s\n", argv[1]);
     while (remaining_time > 0)
     {
@@ -55,4 +58,9 @@ void allocateCPU(int sig_num)
 {
     // allocate the CPU
     return;
+}
+
+void pauseProcess(int sig_num)
+{
+    pause();
 }
