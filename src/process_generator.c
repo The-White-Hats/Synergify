@@ -1,23 +1,25 @@
+#include "clk.h"
 #include "header.h"
 #include "clk.h"
 #include "./ds/queue.h"
 #include <stdarg.h>
+#include <unistd.h>
+
 
 
 ///==============================
 // constants related to process_generator
-#define PATH_SIZE 256
-const char *scheduler_file_name = "scheduler.out";
-const char *clk_file_name = "clk.out";
+const char *scheduler_file_name = "scheduler.out\0";
+const char *clk_file_name = "clk.out\0";
 ///==============================
 
 ///==============================
 // functions
 void clearResources(int);
 void read_input_file(queue *);
+void childLost(int);
 void get_scheduling_algo(int *algorithm_choosen, int *quantum_time);
 int start_program(const char *const file_name, int n, ...);
-void append_to_path(char *const absolute_path, const char *const file_name);
 ///==============================
 
 ///==============================
@@ -32,7 +34,12 @@ int main(int argc, char *argv[])
     queue *processes_queue = create_queue();
     ///==============================
 
+    ///==============================
+    // binding signal handlers
     signal(SIGINT, clearResources);
+    signal(SIGCHLD, childLost);
+    ///==============================
+    
     // TODO Initialization
     // 1. Read the input files.
     read_input_file(processes_queue);
@@ -42,8 +49,8 @@ int main(int argc, char *argv[])
     get_scheduling_algo(&algorithm_choosen, &quantum_time);
 
     // 3. Initiate and create the scheduler and clock processes.
-    int scheduler_id = start_program(scheduler_file_name, 2, algorithm_choosen, quantum_time);
     int clk_id = start_program(clk_file_name, 0);
+    int scheduler_id = start_program(scheduler_file_name, 2, algorithm_choosen, quantum_time);
 
     // 4. Use this function after creating the clock process to initialize clock
     initClk();
@@ -77,10 +84,9 @@ int main(int argc, char *argv[])
         if (send_signal)
             kill(scheduler_id, SIGUSR1);
     }
-
-    kill(scheduler_id, SIGCHLD);
-
-    raise(SIGSTOP);
+    
+    kill(scheduler_id, SIGUSR2);
+    pause();
 
     // 7. Clear clock resources
     destroyClk(true);
@@ -99,7 +105,10 @@ void clearResources(int signum)
  */
 void read_input_file(queue *processes_queue)
 {
-    FILE *input_file = fopen("./processes.txt", "r");
+    FILE *input_file;
+    char file_path[PATH_SIZE];
+    getAbsolutePath(file_path, "processes.txt");
+    input_file = fopen(file_path, "r");
     if (!input_file)
     {
         printf("\nCould not open file processes.txt!!\n");
@@ -180,8 +189,7 @@ int start_program(const char *const file_name, int n, ...)
         int error;
 
         // get the current working directory.
-        getcwd(absolute_path, sizeof(absolute_path));
-        append_to_path(absolute_path, file_name);
+        getAbsolutePath(absolute_path, file_name);
 
         // if we would execute scheduler, then pass to it some arguments.
         if (strcmp(file_name, scheduler_file_name) == 0)
@@ -217,32 +225,15 @@ int start_program(const char *const file_name, int n, ...)
     }
     else if (process_id < 0)
     {
-        printf("\nAn error occured while forking a new process\n");
+        printf("\nAn error occurred while forking a new process\n");
         exit(-1);
     }
     
     return process_id;
 }
 
-/**
- * append_to_path - takes a file_name and appends it to an absolute_path.
- *
- * @file_name: name of the file to append.
-*/
-void append_to_path(char *const absolute_path, const char *const file_name)
+void childLost(int sig_num)
 {
-    int i = 0, j = 0;
-
-    while (absolute_path[i] != '\0')
-        i++;
-
-    // append /bin/ to the path.
-    absolute_path[i++] = '/';
-    absolute_path[i++] = 'b';
-    absolute_path[i++] = 'i';
-    absolute_path[i++] = 'n';
-    absolute_path[i++] = '/';
-
-    while (file_name[j] != '\0')
-        absolute_path[i++] = file_name[j++];
+    // My scheduler died, it is time to terminate
+    return;
 }
