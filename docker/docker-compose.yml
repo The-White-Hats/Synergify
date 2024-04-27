@@ -9,6 +9,8 @@ services:
       - ./../bin:/home/synergify/bin
       - ./../processes.txt:/home/synergify/processes.txt
       - ./../Makefile:/home/synergify/Makefile
+      - ./../scheduler.log:/home/synergify/scheduler.log
+      - ./../scheduler.perf:/home/synergify/scheduler.perf
     command: /bin/bash
     stdin_open: true
     tty: true
