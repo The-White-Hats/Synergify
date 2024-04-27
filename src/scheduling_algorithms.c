@@ -92,11 +92,24 @@ void scheduleHPF(void *head)
 
 /**
  * addLog - add new log line to the log file
+ *
+ * @param file: pointer to File * in which we would add log.
+ * @param currentTime: current time in the system.
+ * @param processId: process id.
+ * @param state: current state of the process.
+ * @param arrivalTime: process arrival time.
+ * @param totalRuntime: total run time of the process.
+ * @param remainingTime: remaining runtime for the process.
+ * @param waitingTime: waiting time of the process.
+ *
+ * @return void.
  */
-
-void addLog(FILE *file, int currentTime, int processId, char *state, int arrivalTime, int totalRuntime, int remainingTime, int waitingTime)
+void addLog(FILE *file, int currentTime, int processId,
+            char *state, int arrivalTime, int totalRuntime,
+            int remainingTime, int waitingTime)
 {
-    fprintf(file, "At time %d process %d %s arr %d total %d remain %d wait %d\n", currentTime, processId, state, arrivalTime, totalRuntime, totalRuntime, currentTime - arrivalTime);
+    fprintf(file, "At time %d process %d %s arr %d total %d remain %d wait %d\n",
+            currentTime, processId, state, arrivalTime, totalRuntime, remainingTime, waitingTime);
 }
 
 /**
@@ -112,10 +125,11 @@ void contentSwitch(PCB *new_front, PCB *old_front, int currentTime, FILE *file)
 {
     if (new_front == NULL)
         return;
+    
     if (old_front != NULL)
     {
         old_front->last_stop_time = currentTime;
-        int remaining_time = old_front->runtime - (currentTime - old_front->start_time - old_front->waiting_time);
+        int remaining_time = old_front->runtime - (currentTime - old_front->arrival - old_front->waiting_time);
         addLog(file,
                currentTime,
                old_front->file_id,
@@ -130,7 +144,7 @@ void contentSwitch(PCB *new_front, PCB *old_front, int currentTime, FILE *file)
     // started or resumed
 
     new_front->waiting_time += currentTime - new_front->last_stop_time;
-
+    
     if (new_front->state == NEWBIE)
     {
         new_front->start_time = currentTime;
@@ -145,7 +159,7 @@ void contentSwitch(PCB *new_front, PCB *old_front, int currentTime, FILE *file)
     }
     else if (new_front->state == READY)
     {
-        int remaining_time = new_front->runtime - (currentTime - new_front->start_time - new_front->waiting_time);
+        int remaining_time = new_front->runtime - (currentTime - new_front->arrival - new_front->waiting_time);
         addLog(file,
                currentTime,
                new_front->file_id,
@@ -156,7 +170,6 @@ void contentSwitch(PCB *new_front, PCB *old_front, int currentTime, FILE *file)
                new_front->waiting_time);
     }
 
-    printf("Current running process: %d , current time: %d\n", new_front->fork_id, currentTime);
     new_front->state = RUNNING;
     kill(new_front->fork_id, SIGCONT);
 }

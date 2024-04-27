@@ -47,9 +47,17 @@ const void* front(queue_t* my_queue);
 bool is_queue_empty(queue_t* my_queue);
 
 /**
+ * queue_copy - copy my_queue to a dist queue
+ * @param my_queue: the queue to be copied.
+ * @param dist: the queue on which I copy the nodes.
+*/
+void queue_copy(queue_t *my_queue, queue_t *dist);
+
+/**
  * queue_free - Frees all memory allocated for the queue elements
  * @param my_queue: A pointer to the queue
+ * @param deleteData: Determine if the data is freed or not
  *
  * Description: This function iteratively dequeues each element from the queue and frees its memory.
  */
-void queue_free(queue_t *my_queue);
+void queue_free(queue_t *my_queue, bool deleteData);

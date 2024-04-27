@@ -37,27 +37,33 @@ int main(int argc, char *argv[])
     // TODO it needs to get the remaining time from somewhere
     remaining_time = atoi(argv[3]);
 
-    // printf("Process %d awakened\n", getpid());
-    printf("process id: %s\n", argv[1]);
     while (remaining_time > 0)
     {
         if (getClk() == prev_time)
             continue;
-        printf("Process.c #%s decremented to %d\n", argv[1], remaining_time);
+        if (getClk() - prev_time > 1)
+        {
+            prev_time = getClk();
+            continue;
+        }
         remaining_time -= 1;
         prev_time = getClk();
+        
+        if (remaining_time > 0){
+            kill(getppid(), SIGPWR);            //sends a signal to scheduler to make it decrement its runtime.
+        }
     }
 
     // Send a signal to the scheduler to inform it that this process did finish
-
     destroyClk(false);
-    printf("process.c #%s finished\n", argv[1]);
+    kill(getppid(), SIGALRM);
     return 0;
 }
 
 void allocateCPU(int sig_num)
 {
     // allocate the CPU
+    prev_time -= 1;
     return;
 }
 
