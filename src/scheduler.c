@@ -81,8 +81,8 @@ int main(int argc, char *argv[])
 
     // Set signal handlers for process initialization and termination
     signal(SIGUSR1, initializeProcesses);
-    signal(SIGCHLD, terminateRunningProcess);
     signal(SIGUSR2, noMoreProcesses);
+    signal(SIGALRM, terminateRunningProcess);
     signal(SIGINT, clearResources);
 
     // Get instance of scheduler configuration and set it
@@ -133,8 +133,10 @@ int main(int argc, char *argv[])
             break;
         }
     }
-    printf("Generating Output files!!!!\n");
+    printf("Generating Output files!!!!\n\n");
     addPref(perf);
+    fflush(logFile);
+    fflush(perf);
 
     clearResources(0);
 
@@ -223,7 +225,7 @@ static void terminateRunningProcess(int signum)
     //printQueue(ready_queue);
 
     waitpid(process_id, &stat_loc, 0);
-    signal(SIGCHLD, terminateRunningProcess);
+    signal(SIGALRM, terminateRunningProcess);
 }
 
 /**
