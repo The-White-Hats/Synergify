@@ -21,14 +21,19 @@ typedef short bool;
 #define SHKEY 300
 
 ///==============================
-// don't mess with this variable//
-int *shmaddr; //
+// mess with this variable//
+float *shmaddr; //
 //===============================
 
 
 int getClk()
 {
     return *shmaddr;
+}
+
+float getClkFloat()
+{
+    return (float)*shmaddr;
 }
 
 /*
@@ -45,7 +50,7 @@ void initClk()
         sleep(1);
         shmid = shmget(SHKEY, 4, 0444);
     }
-    shmaddr = (int *)shmat(shmid, (void *)0, 0);
+    shmaddr = (float *)shmat(shmid, (void *)0, 0);
 }
 
 /*

@@ -40,6 +40,7 @@ static void initializeProcesses(int signum);
 static void terminateRunningProcess(int signum);
 static void noMoreProcesses(int signum);
 static void clearResources(int signum);
+static void processDecremented(int signum);
 //=============================== SCHEDULER FUNCTIONS ===============================//
 static void *allocateDataStructure(scheduling_algo selected_algo);
 static PCB *getRunningProcess(scheduling_algo selected_algo);
@@ -52,6 +53,8 @@ static float calculate_std_wta();
 static void addPref(FILE *file);
 static void addFinishLog(FILE *file, int currentTime, int processId, char *state, int arrivalTime, int totalRuntime, int waitingTime, int TA, float WTA);
 
+ int selectedAlgorithmIndex;
+void (*scheduleFunction[])(void *) = {scheduleHPF, scheduleSRTN, scheduleRR};
 int main(int argc, char *argv[])
 {
     if (argc != 3)
@@ -84,6 +87,7 @@ int main(int argc, char *argv[])
     signal(SIGUSR2, noMoreProcesses);
     signal(SIGALRM, terminateRunningProcess);
     signal(SIGINT, clearResources);
+    signal(SIGPWR, processDecremented);
 
     // Get instance of scheduler configuration and set it
     SchedulerConfig *schedulerConfig = getSchedulerConfigInstance();
@@ -94,8 +98,10 @@ int main(int argc, char *argv[])
     // Array of scheduling functions corresponding to each algorithm
     void (*scheduleFunction[])(void *) = {scheduleHPF, scheduleSRTN, scheduleRR};
 
-    int selectedAlgorithmIndex = schedulerConfig->selected_algorithm - 1;
+    selectedAlgorithmIndex = schedulerConfig->selected_algorithm - 1;
+
     size_t prev_time = -1;
+    float prev_time_float = -.5;
 
     // Allocate the data structure depending on the selected algorithm
     ready_queue = allocateDataStructure(schedulerConfig->selected_algorithm);
@@ -108,24 +114,31 @@ int main(int argc, char *argv[])
     while (1)
     {
         int curr_time = getClk();
+        float curr_time_float = getClkFloat();
         // Handle context switching if the queue front changed
         generateProcesses();
-        PCB *front_process = getRunningProcess(schedulerConfig->selected_algorithm);
-        if (((running_process != NULL) != (front_process != NULL)) || (running_process && running_process->fork_id != front_process->fork_id))
+        if (curr_time_float - prev_time_float == 1)
         {
-            printf("Context Switching\n");
-            contentSwitch(front_process, running_process, getClk(), logFile);
-            running_process = front_process;
-            if (selectedAlgorithmIndex == RR)
-                schedulerConfig->curr_quantum = schedulerConfig->quantum;
-            curr_time = getClk();
+            PCB *front_process = getRunningProcess(schedulerConfig->selected_algorithm);
+            if (((running_process != NULL) != (front_process != NULL)) || (running_process && running_process->fork_id != front_process->fork_id))
+            {
+                printf("Context Switching\n");
+                contentSwitch(front_process, running_process, getClk(), logFile);
+                running_process = front_process;
+                if (selectedAlgorithmIndex == RR)
+                    schedulerConfig->curr_quantum = schedulerConfig->quantum;
+                curr_time = getClk();
+            }
+             //printf("Float Time Step: %f\n", curr_time_float);
+            prev_time_float = curr_time_float;
         }
         // Run selected algorithm if the clock has ticked
         if (curr_time != prev_time)
         {
+            PCB *front_process = getRunningProcess(schedulerConfig->selected_algorithm);
             prev_time = curr_time;
+            if(front_process!=NULL)printf("front  %d\n",front_process->fork_id);
             printf("Time Step: %ld\n", prev_time);
-            scheduleFunction[selectedAlgorithmIndex](ready_queue);
         }
 
         if (is_running_queue_empty(schedulerConfig->selected_algorithm) && is_queue_empty(queue) && endScheduler)
@@ -192,7 +205,7 @@ static void terminateRunningProcess(int signum)
     PCB *process = popRunningProcess(selected_algo);
     pid_t process_id = process->fork_id;
 
-    //printQueue(ready_queue);
+    // printQueue(ready_queue);
 
     wta_values = realloc(wta_values, sizeof(float) * total_processes);
     if (wta_values == NULL)
@@ -217,12 +230,12 @@ static void terminateRunningProcess(int signum)
                  getClk() - running_process->arrival,
                  (float)(getClk() - running_process->arrival) / running_process->runtime);
 
+
+    printf("Process %d  running %d Terminated at %d.\n", process->fork_id,running_process->fork_id, getClk());
     free(running_process);
 
     running_process = NULL;
-
-    printf("Process %d Terminated at %d.\n", process_id, getClk());
-    //printQueue(ready_queue);
+    // printQueue(ready_queue);
 
     waitpid(process_id, &stat_loc, 0);
     signal(SIGALRM, terminateRunningProcess);
@@ -239,7 +252,7 @@ static void noMoreProcesses(int signum)
 /**
  * clearResources - Deallocates resources used by the scheduler
  * @param signum: The signal number
- * 
+ *
  * This function is a signal handler for cleaning up resources when SIGINT (Ctrl+C) is received.
  * It deallocates the data structures used by the scheduler, closes opened files, and prints a message.
  */
@@ -316,7 +329,7 @@ static PCB *popRunningProcess(scheduling_algo selected_algo)
  * is_running_queue_empty - Checks if the running queue is empty
  * @param selected_algo: The selected scheduling algorithm
  * @return 1 if the running queue is empty, otherwise 0
- * 
+ *
  * This function checks if the running queue is empty based on the selected scheduling algorithm.
  */
 static short is_running_queue_empty(scheduling_algo selected_algo)
@@ -409,10 +422,10 @@ static void addToReadyQueue(PCB *process)
 
 /**
  * calculate_std_wta - Calculates the standard deviation of weighted turnaround time (WTA)
- * 
+ *
  * This function calculates the standard deviation of WTA using the formula:
  * standard deviation = sqrt((sum of squared differences from mean) / total_processes)
- * 
+ *
  * @return The standard deviation of WTA
  */
 static float calculate_std_wta()
@@ -430,7 +443,7 @@ static float calculate_std_wta()
 /**
  * addPref - Adds performance metrics to a log file
  * @param file: Pointer to the log file
- * 
+ *
  * This function adds CPU utilization, average WTA, average waiting time, and standard deviation of WTA
  * to a log file.
  */
@@ -453,12 +466,20 @@ static void addPref(FILE *file)
  * @param waitingTime: The waiting time of the finished process
  * @param TA: The turnaround time of the finished process
  * @param WTA: The weighted turnaround time of the finished process
- * 
+ *
  * This function writes process finish information to a log file in a specific format.
  */
 static void addFinishLog(FILE *file, int currentTime, int processId, char *state, int arrivalTime, int totalRuntime, int waitingTime, int TA, float WTA)
 {
     fprintf(file, "At time %d process %d %s arr %d total %d remain %d wait %d TA %d WTA %.2f\n", currentTime, processId, state, arrivalTime, totalRuntime, 0, waitingTime, TA, WTA);
+}
+
+
+void processDecremented(int signum)
+{
+    printf("Process Decremented at time %d\n",getClk());
+    scheduleFunction[selectedAlgorithmIndex](ready_queue);
+    signal(SIGPWR, processDecremented);
 }
 
 // void printQueue(queue_t *head)
