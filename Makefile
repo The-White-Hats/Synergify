@@ -17,5 +17,5 @@ clean:
 all: clean build
 
 run:
-	valgrind ./bin/test_generator.out
-	valgrind ./bin/process_generator.out
+	#./bin/test_generator.out
+	./bin/process_generator.out
