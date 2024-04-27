@@ -43,25 +43,33 @@ int main(int argc, char *argv[])
     {
         if (getClk() == prev_time)
             continue;
-        printf("Process.c #%s decremented to %d\n", argv[1], remaining_time);
+        if (getClk() - prev_time > 1)
+        {
+            prev_time = getClk();
+            continue;
+        }
         remaining_time -= 1;
         prev_time = getClk();
+        printf("Process.c #%s decremented to %d at %d\n", argv[1], remaining_time, prev_time);
     }
 
     // Send a signal to the scheduler to inform it that this process did finish
 
     destroyClk(false);
     printf("process.c #%s finished\n", argv[1]);
+    kill(getppid(), SIGALRM);
     return 0;
 }
 
 void allocateCPU(int sig_num)
 {
     // allocate the CPU
+    prev_time -= 1;
     return;
 }
 
 void pauseProcess(int sig_num)
 {
+    printf("Stopped process.c with remaining %d at %d\n", remaining_time, getClk());
     pause();
 }

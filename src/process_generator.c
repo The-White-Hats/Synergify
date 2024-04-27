@@ -90,6 +90,7 @@ int main(int argc, char *argv[])
 
     // 7. Clear clock resources
     destroyClk(true);
+    return 0;
 }
 
 void clearResources(int signum)
