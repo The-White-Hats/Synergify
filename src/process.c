@@ -51,10 +51,14 @@ int main(int argc, char *argv[])
         remaining_time -= 1;
         prev_time = getClk();
         printf("Process.c #%s decremented to %d at %d\n", argv[1], remaining_time, prev_time);
+        if (remaining_time > 0){
+            kill(getppid(), SIGPWR);
+            printf("Process.c #%s sent SIGPWR at %d with remaining time %d\n", argv[1], getClk(),remaining_time);
+        }
     }
 
     // Send a signal to the scheduler to inform it that this process did finish
-
+    printf("Almost finished process.c %d with remaining %d at %d\n", getpid(), remaining_time, getClk());
     destroyClk(false);
     printf("process.c #%s finished\n", argv[1]);
     kill(getppid(), SIGALRM);
