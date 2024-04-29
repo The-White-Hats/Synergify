@@ -214,12 +214,12 @@ static void terminateRunningProcess(int signum)
         exit(EXIT_FAILURE);
     }
 
-    wta_values[idx] = (float)(getClk() - process->arrival) / process->runtime;
+    wta_values[idx] =  (process->runtime == 0)? 0 : (float)(getClk() - process->arrival) / process->runtime;
 
     total_waiting_time += process->waiting_time;
     total_weighted_turnaround_time += wta_values[idx++];
     total_running_time += process->runtime;
-
+    float WTA =  (running_process->runtime == 0)? 0 :(float)(getClk() - running_process->arrival) / running_process->runtime;
     addFinishLog(logFile,
                  getClk(),
                  running_process->file_id,
@@ -228,7 +228,7 @@ static void terminateRunningProcess(int signum)
                  running_process->runtime,
                  running_process->waiting_time,
                  getClk() - running_process->arrival,
-                 (float)(getClk() - running_process->arrival) / running_process->runtime);
+                WTA);
 
 
     printf("Process %d  running %d Terminated at %d.\n", process->fork_id,running_process->fork_id, getClk());
