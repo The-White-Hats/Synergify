@@ -6,3 +6,5 @@
 
 # files
 processes.txt
+*.log
+*.perf
