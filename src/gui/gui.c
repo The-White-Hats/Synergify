@@ -72,7 +72,7 @@ int height = screenHeight / 2 - 80;
 //-----------------------------------------------------------------input variables-----------------------------------------
 
 char quantumSize[32] = "\0"; // Buffer to store user input for quantum size
-int algoChoice = 2;          // Variable to store user choice for algorithm
+int algoChoice = 0;          // Variable to store user choice for algorithm
 const char *algoOptions = "Non-preemptive Highest Priority First;Shortest Remaining time Next;Round Robin";
 int quantum = 1; // Initial value
 
@@ -399,6 +399,8 @@ static int autoType(const char *text, int current_frame, int max_frame_count, in
     return numChars;
 }
 
+bool once = false;
+FILE *fp = NULL;
 static bool inputScreen()
 {
     GuiComboBox((Rectangle){screenWidth / 2 - 110, height, 250, 30}, algoOptions, &algoChoice);
@@ -406,7 +408,7 @@ static bool inputScreen()
     if (GuiButton((Rectangle){screenWidth / 2 - 110, height + ((algoChoice == 2) ? 150 : 60), 250, 30}, "Choose File"))
     {
         // Open file dialog using zenity
-        FILE *fp = popen("zenity --file-selection", "r");
+        fp = popen("zenity --file-selection", "r");
         if (fp != NULL)
         {
             fgets(filePath, sizeof(filePath), fp);
@@ -428,6 +430,11 @@ static bool inputScreen()
         // Spinner
         DrawText("Quantum", screenWidth / 2 - 110, height + 86, 15, MAGENTA); // Change the font size and color as needed
         GuiSpinner((Rectangle){screenWidth / 2 - 40, height + 80, 180, 30}, "", &quantum, 1, 10000, false);
+    }
+    if((buttonPressed || once) && fp == NULL ){
+        DrawText("Please select a file to continue", screenWidth / 2 - 60,height + ((algoChoice == 2) ? 225 : 150), 10, WHITE); // Change the font size and color as needed
+        once = true;
+        return false;
     }
     return buttonPressed;
 }
