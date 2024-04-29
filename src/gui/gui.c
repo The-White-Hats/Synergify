@@ -238,8 +238,6 @@ static void WelcomeScreen()
                         system("xdg-open https://github.com/marwan2232004");
                 }
             }
-            else
-                SetMouseCursor(MOUSE_CURSOR_ARROW);
         }
         if (hoverFlag)
             SetMouseCursor(MOUSE_CURSOR_POINTING_HAND);
