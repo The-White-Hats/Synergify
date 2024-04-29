@@ -19,6 +19,7 @@ typedef short bool;
 #define false 0
 
 #define SHKEY 300
+#define GUI_SHKEY 400
 
 ///==============================
 // mess with this variable//

@@ -6,40 +6,82 @@
 
 #include <stdatomic.h> // C11 atomic data types
 
-#include <time.h> // Required for: clock()
+#include <time.h>  // Required for: clock()
+#include <stdio.h> //if you don't use scanf/printf change this include
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/file.h>
+#include <sys/ipc.h>
+#include <sys/msg.h>
+#include <sys/wait.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <errno.h>
+#include <string.h>
+#include <stdarg.h>
 
-#include <stdio.h> // Required for: FILE, fopen(), fclose(), fgets(), popen(), pclose()
-#include <unistd.h> // Include this for the sleep function
+#define GUI_SHKEY 400
+typedef struct input_info_s
+{
+    int algoChoice;
+    int quantum;
+    char filePath[512];
+} input_info_t;
 
+typedef struct input_msgbuf_s
+{
+    long mytype;
+    input_info_t info;
+} input_msgbuf_t;
 
-#define GRID_SIZE 100
+//------------------------------------------Loading Bar variables and functions------------------------------------------
 
 // Using C11 atomics for synchronization
 // NOTE: A plain bool (or any plain data type for that matter) can't be used for inter-thread synchronization
 static atomic_bool dataLoaded = false;  // Data Loaded completion indicator
 static void *LoadDataThread(void *arg); // Loading data thread function declaration
-static void WelcomeScreen(void);        // Welcome screen function declaration
-static int CustomButton(Rectangle bounds, const char *text);
+static atomic_int dataProgress = 0;     // Data progress accumulator
+static void loadingBar();
 
-static atomic_int dataProgress = 0; // Data progress accumulator
+pthread_t threadId = {0}; // Loading data thread id
 
+enum
+{
+    STATE_WAITING,
+    STATE_LOADING,
+    STATE_FINISHED
+} state = STATE_WAITING;
+int framesCounter = 0;
+
+//------------------------------------------------------------------------------------------------------------------------
+
+static void WelcomeScreen(void);                             // Welcome screen
+static int CustomButton(Rectangle bounds, const char *text); // Custom button function
+static bool inputScreen();                                   // Input screen function
+static int autoType(const char *text, int current_frame, int max_frame_count, int x, int y, int font_size, Color color);
+void send_message();
+
+// Global variables
+
+//----------------------------------------------- Screen variables--------------------------------------------------------
 const int screenWidth = 1067;
 const int screenHeight = 600;
 int height = screenHeight / 2 - 80;
+//------------------------------------------------------------------------------------------------------------------------
+
+//-----------------------------------------------------------------input variables-----------------------------------------
+
+char quantumSize[32] = "\0"; // Buffer to store user input for quantum size
+int algoChoice = 2;          // Variable to store user choice for algorithm
+const char *algoOptions = "Non-preemptive Highest Priority First;Shortest Remaining time Next;Round Robin";
+int quantum = 1; // Initial value
+
+char filePath[512] = {0}; // Buffer to store the file path
+
+//------------------------------------------------------------------------------------------------------------------------
 
 int main(void)
 {
-    // Initialization
-
-    pthread_t threadId = {0}; // Loading data thread id
-
-    enum
-    {
-        STATE_WAITING,
-        STATE_LOADING,
-        STATE_FINISHED
-    } state = STATE_WAITING;
-    int framesCounter = 0;
 
     InitWindow(screenWidth, screenHeight, "Process Scheduler Simulation");
     SetTargetFPS(60);
@@ -48,141 +90,34 @@ int main(void)
 
     BeginDrawing();
     // Draw the background image
+
     DrawTexture(background, 0, 0, WHITE);
     ClearBackground(RAYWHITE);
     EndDrawing();
 
-    char quantumSize[32] = "\0"; // Buffer to store user input for quantum size
-    int algoChoice = 2;          // Variable to store user choice for algorithm
-    const char *algoOptions = "Non-preemptive Highest Priority First;Shortest Remaining time Next;Round Robin";
-    int quantum = 1; // Initial value
-
-
-    char filePath[512] = {0}; // Buffer to store the file path
-
     WelcomeScreen();
 
     bool buttonPressed = false; // Flag to check if the button has been pressed
-
-   usleep(300000);
-
+    bool once = false;
     while (!WindowShouldClose())
     {
-
-        // Draw
 
         BeginDrawing();
         ClearBackground(RAYWHITE);
         DrawTexture(background, 0, 0, WHITE);
 
-        // Update
         if (!buttonPressed)
-        {
-            GuiComboBox((Rectangle){screenWidth / 2 - 110, height, 250, 30}, algoOptions, &algoChoice);
-            buttonPressed = CustomButton((Rectangle){screenWidth / 2 - 110, height + ((algoChoice == 2) ? 190 : 110), 250, 30}, "Continue");
-            if (GuiButton((Rectangle){screenWidth / 2 - 110, height + ((algoChoice == 2) ?150:60), 250, 30}, "Choose File"))
-            {
-                // Open file dialog using zenity
-                FILE *fp = popen("zenity --file-selection", "r");
-                if (fp != NULL)
-                {
-                    fgets(filePath, sizeof(filePath), fp);
-                    pclose(fp);
-                    // Remove trailing newline character
-                    size_t len = strlen(filePath);
-                    if (len > 0 && filePath[len - 1] == '\n')
-                    {
-                        filePath[len - 1] = '\0';
-                    }
-                    // Print selected file path
-                    printf("Selected file: %s\n", filePath);
-                }
-            }
-        }
+            buttonPressed = inputScreen();
         else
         {
-            switch (state)
+            if (!once)
             {
-            case STATE_WAITING:
-            {
-                int error = pthread_create(&threadId, NULL, &LoadDataThread, NULL);
-                if (error != 0)
-                    TraceLog(LOG_ERROR, "Error creating loading thread");
-                else
-                    TraceLog(LOG_INFO, "Loading thread initialized successfully");
-
-                state = STATE_LOADING;
+                send_message();
+                once = true;
             }
-            break;
-            case STATE_LOADING:
-            {
-                framesCounter++;
-                if (atomic_load_explicit(&dataLoaded, memory_order_relaxed))
-                {
-                    framesCounter = 0;
-                    int error = pthread_join(threadId, NULL);
-                    if (error != 0)
-                        TraceLog(LOG_ERROR, "Error joining loading thread");
-                    else
-                        TraceLog(LOG_INFO, "Loading thread terminated successfully");
-
-                    state = STATE_FINISHED;
-                }
-            }
-            break;
-            case STATE_FINISHED:
-            {
-                if (IsKeyPressed(KEY_ENTER))
-                {
-                    // Reset everything to launch again
-                    atomic_store_explicit(&dataLoaded, false, memory_order_relaxed);
-                    atomic_store_explicit(&dataProgress, 0, memory_order_relaxed);
-                    state = STATE_WAITING;
-                }
-            }
-            break;
-            default:
-                break;
-            }
+            loadingBar();
         }
 
-        if (!buttonPressed)
-        {
-            DrawText("Choose An Algorithm", screenWidth / 2 - 210, height - 100, 45, MAGENTA);
-            if (algoChoice == 2)
-            {
-                // Spinner
-                DrawText("Quantum", screenWidth / 2 - 110, height + 86, 15, MAGENTA); // Change the font size and color as needed
-                GuiSpinner((Rectangle){screenWidth / 2 - 40, height + 80, 180, 30}, "", &quantum, 1, 10000, false);
-            }
-        }
-        else
-        {
-            int loadingHeight = height + 50;
-            switch (state)
-            {
-            case STATE_WAITING:
-                // DrawText("PRESS ENTER to START LOADING DATA", 150, 170, 20, DARKGRAY);
-                break;
-            case STATE_LOADING:
-            {
-                DrawRectangle(280, loadingHeight, atomic_load_explicit(&dataProgress, memory_order_relaxed), 60, SKYBLUE);
-                if ((framesCounter / 15) % 2)
-                    DrawText("LOADING DATA...", 380, loadingHeight + 10, 40, DARKBLUE);
-            }
-            break;
-            case STATE_FINISHED:
-            {
-                DrawRectangle(280, loadingHeight, 500, 60, LIME);
-                DrawText("DATA LOADED!", 380, loadingHeight + 10, 40, GREEN);
-            }
-            break;
-            default:
-                break;
-            }
-
-            DrawRectangleLines(280, loadingHeight, 500, 60, DARKGRAY);
-        }
         EndDrawing();
     }
     UnloadTexture(background);
@@ -190,6 +125,28 @@ int main(void)
     CloseWindow(); // Close window and OpenGL context
 
     return 0;
+}
+
+void send_message()
+{
+    int msgq_id = msgget(GUI_SHKEY, 0666 | IPC_CREAT);
+    if (msgq_id == -1)
+    {
+        perror("Error in create");
+        return;
+    }
+    input_msgbuf_t msgbuf;
+
+    input_info_t info;
+    info.algoChoice = algoChoice;
+    info.quantum = quantum;
+    strncpy(info.filePath, filePath, sizeof(info.filePath) - 1);
+    info.filePath[sizeof(info.filePath) - 1] = '\0'; // Ensure null-termination
+
+    msgbuf.mytype = 1;
+    msgbuf.info = info;
+    msgsnd(msgq_id, &msgbuf, sizeof(msgbuf.info), IPC_NOWAIT);
+    printf("Message sent\n");
 }
 
 static void WelcomeScreen()
@@ -200,10 +157,10 @@ static void WelcomeScreen()
     const char *projectName = "Synergify";
     const char *description[] = {"This is a Process Scheduler Simulation", "Enhance your understanding of the process scheduling algorithms", "Avialable algorithms: Non-preemptive Highest Priority First, Shortest Remaining time Next, Round Robin", "Task manager to track the progress of the processes", "Image Created at the end to show information about Processes", "Enjoy!"};
 
-    int maxFrameCount = 80; // The number of frames over which the text will be typed
-    int maxFrameCount_description = 60;
-    int frameCount_description = 0; // The current frame count
-    int frameCount = 0;             // The current frame count
+    int maxFrameCount = 80;             // The number of frames over which the text will be typed
+    int maxFrameCount_description = 60; // The number of frames over which the text will be typed
+    int frameCount_description = 0;     // The current frame count
+    int frameCount = 0;                 // The current frame count
     int welcomeNumChars = 0;
     int projectNumChars = 0;
     int descriptionNumChars = 0;
@@ -221,52 +178,37 @@ static void WelcomeScreen()
         if (buttonPressed)
         {
             for (int i = 0; i < 4; i++)
-                UnloadTexture(developers[i]);
+                UnloadTexture(developers[i]); // Unload the textures
             return;
         }
 
         BeginDrawing();
         if (welcomeNumChars < strlen(welcomeText))
         {
-            // Calculate the number of characters to draw
-            welcomeNumChars = strlen(welcomeText) * frameCount / maxFrameCount;
-            // Draw the text
-            char buffer[256];
-            strncpy(buffer, welcomeText, welcomeNumChars);
-            buffer[welcomeNumChars] = '\0'; // Null-terminate the string
-            DrawText(buffer, screenWidth / 2 - 260, 50, 45, WHITE);
+            welcomeNumChars = autoType(welcomeText, frameCount, maxFrameCount, screenWidth / 2 - 260, 50, 45, WHITE);
+            frameCount = (frameCount + 1) % (maxFrameCount + 1);
         }
         else if (projectNumChars < strlen(projectName))
         {
-            // Calculate the number of characters to draw
-            projectNumChars = strlen(projectName) * frameCount / maxFrameCount;
-            // Draw the text
-            char buffer[256];
-            strncpy(buffer, projectName, projectNumChars);
-            buffer[projectNumChars] = '\0'; // Null-terminate the string
-            DrawText(buffer, screenWidth / 2 + 20, 40, 55, MAGENTA);
+            projectNumChars = autoType(projectName, frameCount, maxFrameCount, screenWidth / 2 + 20, 40, 55, MAGENTA);
+            frameCount = (frameCount + 1) % (maxFrameCount + 1);
         }
         else if (descriptionIdx < 6)
         {
 
             if (descriptionNumChars < strlen(description[descriptionIdx]))
-            {
-                // Calculate the number of characters to draw
-                descriptionNumChars = strlen(description[descriptionIdx]) * frameCount_description / maxFrameCount_description;
-                // Draw the text
-                char buffer[256];
-                strncpy(buffer, description[descriptionIdx], descriptionNumChars);
-                buffer[descriptionNumChars] = '\0'; // Null-terminate the string
-                DrawText(buffer, screenWidth / 2 - 300, height + 50 * descriptionIdx - 80, 15, PURPLE);
-            }
+                descriptionNumChars = autoType(description[descriptionIdx], frameCount_description, maxFrameCount_description, screenWidth / 2 - 300, height + 50 * descriptionIdx - 80, 15, PURPLE);
             else
             {
                 descriptionNumChars = 0;
                 descriptionIdx++;
+                frameCount_description = 0;
             }
 
             frameCount_description = (frameCount_description + 1) % (maxFrameCount_description + 1);
         }
+
+        //---------------------------------------------------------Developers Images---------------------------------------------------------
 
         for (int i = 0; i < 4; i++)
         {
@@ -304,10 +246,11 @@ static void WelcomeScreen()
         else
             SetMouseCursor(MOUSE_CURSOR_ARROW);
 
+        //----------------------------------------------------------------------------------------------------------------------------
+
         EndDrawing();
 
         // Increase the frame count
-        frameCount = (frameCount + 1) % (maxFrameCount + 1);
     }
 }
 
@@ -369,4 +312,122 @@ static int CustomButton(Rectangle bounds, const char *text)
     //------------------------------------------------------------------
 
     return result; // Button pressed: result = 1
+}
+
+static void loadingBar()
+{
+    switch (state)
+    {
+    case STATE_WAITING:
+    {
+        int error = pthread_create(&threadId, NULL, &LoadDataThread, NULL);
+        if (error != 0)
+            TraceLog(LOG_ERROR, "Error creating loading thread");
+        else
+            TraceLog(LOG_INFO, "Loading thread initialized successfully");
+
+        state = STATE_LOADING;
+    }
+    break;
+    case STATE_LOADING:
+    {
+        framesCounter++;
+        if (atomic_load_explicit(&dataLoaded, memory_order_relaxed))
+        {
+            framesCounter = 0;
+            int error = pthread_join(threadId, NULL);
+            if (error != 0)
+                TraceLog(LOG_ERROR, "Error joining loading thread");
+            else
+                TraceLog(LOG_INFO, "Loading thread terminated successfully");
+
+            state = STATE_FINISHED;
+        }
+    }
+    break;
+    case STATE_FINISHED:
+    {
+        if (IsKeyPressed(KEY_ENTER))
+        {
+            // Reset everything to launch again
+            atomic_store_explicit(&dataLoaded, false, memory_order_relaxed);
+            atomic_store_explicit(&dataProgress, 0, memory_order_relaxed);
+            state = STATE_WAITING;
+        }
+    }
+    break;
+    default:
+        break;
+    }
+
+    int loadingHeight = height + 50;
+    switch (state)
+    {
+    case STATE_WAITING:
+        // DrawText("PRESS ENTER to START LOADING DATA", 150, 170, 20, DARKGRAY);
+        break;
+    case STATE_LOADING:
+    {
+        DrawRectangle(280, loadingHeight, atomic_load_explicit(&dataProgress, memory_order_relaxed), 60, SKYBLUE);
+        if ((framesCounter / 15) % 2)
+            DrawText("LOADING DATA...", 380, loadingHeight + 10, 40, DARKBLUE);
+    }
+    break;
+    case STATE_FINISHED:
+    {
+        DrawRectangle(280, loadingHeight, 500, 60, LIME);
+        DrawText("DATA LOADED!", 380, loadingHeight + 10, 40, GREEN);
+    }
+    break;
+    default:
+        break;
+    }
+
+    DrawRectangleLines(280, loadingHeight, 500, 60, DARKGRAY);
+}
+
+static int autoType(const char *text, int current_frame, int max_frame_count, int x, int y, int font_size, Color color)
+{
+    int numChars = 0;
+    // Calculate the number of characters to draw
+    numChars = strlen(text) * current_frame / max_frame_count;
+    // Draw the text
+    char buffer[256];
+    strncpy(buffer, text, numChars);
+    buffer[numChars] = '\0'; // Null-terminate the string
+    DrawText(buffer, x, y, font_size, color);
+    return numChars;
+}
+
+static bool inputScreen()
+{
+    GuiComboBox((Rectangle){screenWidth / 2 - 110, height, 250, 30}, algoOptions, &algoChoice);
+    int buttonPressed = CustomButton((Rectangle){screenWidth / 2 - 110, height + ((algoChoice == 2) ? 190 : 110), 250, 30}, "Continue");
+    if (GuiButton((Rectangle){screenWidth / 2 - 110, height + ((algoChoice == 2) ? 150 : 60), 250, 30}, "Choose File"))
+    {
+        // Open file dialog using zenity
+        FILE *fp = popen("zenity --file-selection", "r");
+        if (fp != NULL)
+        {
+            fgets(filePath, sizeof(filePath), fp);
+            pclose(fp);
+            // Remove trailing newline character
+            size_t len = strlen(filePath);
+            if (len > 0 && filePath[len - 1] == '\n')
+            {
+                filePath[len - 1] = '\0';
+            }
+            // Print selected file path
+            printf("Selected file: %s\n", filePath);
+        }
+    }
+
+    DrawText("Choose An Algorithm", screenWidth / 2 - 210, height - 100, 45, MAGENTA);
+    if (algoChoice == 2)
+    {
+        // Spinner
+        DrawText("Quantum", screenWidth / 2 - 110, height + 86, 15, MAGENTA); // Change the font size and color as needed
+        GuiSpinner((Rectangle){screenWidth / 2 - 40, height + 80, 180, 30}, "", &quantum, 1, 10000, false);
+    }
+    return buttonPressed;
 }
