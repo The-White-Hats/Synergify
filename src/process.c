@@ -51,9 +51,9 @@ int main(int argc, char *argv[])
         remaining_time -= 1;
         prev_time = getClk();
         printf("Process.c #%s decremented to %d at %d\n", argv[1], remaining_time, prev_time);
+        
         if (remaining_time > 0){
-            kill(getppid(), SIGPWR);
-            printf("Process.c #%s sent SIGPWR at %d with remaining time %d\n", argv[1], getClk(),remaining_time);
+            kill(getppid(), SIGPWR);            //sends a signal to scheduler to make it decrement its runtime.
         }
     }
 

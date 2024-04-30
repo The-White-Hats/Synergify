@@ -92,11 +92,24 @@ void scheduleHPF(void *head)
 
 /**
  * addLog - add new log line to the log file
+ *
+ * @param file: pointer to File * in which we would add log.
+ * @param currentTime: current time in the system.
+ * @param processId: process id.
+ * @param state: current state of the process.
+ * @param arrivalTime: process arrival time.
+ * @param totalRuntime: total run time of the process.
+ * @param remainingTime: remaining runtime for the process.
+ * @param waitingTime: waiting time of the process.
+ *
+ * @return void.
  */
-
-void addLog(FILE *file, int currentTime, int processId, char *state, int arrivalTime, int totalRuntime, int remainingTime, int waitingTime)
+void addLog(FILE *file, int currentTime, int processId,
+            char *state, int arrivalTime, int totalRuntime,
+            int remainingTime, int waitingTime)
 {
-    fprintf(file, "At time %d process %d %s arr %d total %d remain %d wait %d\n", currentTime, processId, state, arrivalTime, totalRuntime, remainingTime, waitingTime);
+    fprintf(file, "At time %d process %d %s arr %d total %d remain %d wait %d\n",
+            currentTime, processId, state, arrivalTime, totalRuntime, remainingTime, waitingTime);
 }
 
 /**

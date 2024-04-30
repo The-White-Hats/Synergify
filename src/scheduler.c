@@ -3,37 +3,6 @@
 #include "ds/fib_heap.h"
 #include "ds/queue.h"
 #include <math.h>
-/**
- * getSchedulerConfigInstance - Function to get the singleton instance of SchedulerConfig.
- * @return Pointer to the instance.
- *
- * Description: This function returns a pointer to the singleton instance of the SchedulerConfig
- *              structure, ensuring that only one instance exists throughout the program.
- */
-SchedulerConfig *getSchedulerConfigInstance()
-{
-    // Declare the static instance of the singleton
-    static SchedulerConfig instance = {.quantum = 0, .curr_quantum = 0};
-
-    // Return a pointer to the instance
-    return &instance;
-}
-
-// To be accessed by signal handlers
-void *ready_queue = NULL;
-queue_t *queue = NULL;
-bool endScheduler = false;
-
-float total_waiting_time = 0;             // sum of waiting times
-float total_weighted_turnaround_time = 0; // sum of weighted turnaround times
-float total_running_time = 0;             // sum of running times
-float *wta_values = NULL;                 // array of weighted turnaround times
-int total_processes = 0;                  // total number of processes that come so far
-int idx = 0;                              // index of the wta_values array
-int waste_time = 0;                       // cpu wasted time
-
-PCB *running_process = NULL;
-FILE *logFile, *perf;
 
 //================================= SIGNAL HANDLERS =================================//
 static void initializeProcesses(int signum);
@@ -41,6 +10,7 @@ static void terminateRunningProcess(int signum);
 static void noMoreProcesses(int signum);
 static void clearResources(int signum);
 static void processDecremented(int signum);
+
 //=============================== SCHEDULER FUNCTIONS ===============================//
 static void *allocateDataStructure(scheduling_algo selected_algo);
 static PCB *getRunningProcess(scheduling_algo selected_algo);
@@ -48,13 +18,36 @@ static PCB *popRunningProcess(scheduling_algo selected_algo);
 static short is_running_queue_empty(scheduling_algo selected_algo);
 static void generateProcesses();
 static void addToReadyQueue(PCB *process);
+SchedulerConfig *getSchedulerConfigInstance();
+
 //==================================== LOG DATA =====================================//
 static float calculate_std_wta();
-static void addPref(FILE *file);
-static void addFinishLog(FILE *file, int currentTime, int processId, char *state, int arrivalTime, int totalRuntime, int waitingTime, int TA, float WTA);
+static void addPerf(FILE *file);
+static void addFinishLog(FILE *file, int currentTime, int processId,
+                         char *state, int arrivalTime, int totalRuntime,
+                         int waitingTime, int TA, float WTA);
 
- int selectedAlgorithmIndex;
+//====================== GLOBAL VARIABLES (scheduelr related) =======================//
+void *ready_queue = NULL;
+queue_t *queue = NULL;
+bool endScheduler = false;
+PCB *running_process = NULL;
+int selectedAlgorithmIndex;
 void (*scheduleFunction[])(void *) = {scheduleHPF, scheduleSRTN, scheduleRR};
+
+//====================== GLOBAL VARIABLES (log file related) =======================//
+float total_waiting_time = 0;                   // sum of waiting times
+float total_weighted_turnaround_time = 0;       // sum of weighted turnaround times
+float total_running_time = 0;                   // sum of running times
+float *wta_values = NULL;                       // array of weighted turnaround times
+int total_processes = 0;                        // total number of processes that come so far
+int idx = 0;                                    // index of the wta_values array
+int waste_time = 0;                             // cpu wasted time
+FILE *logFile, *perfFile;
+const char *const SCHEDULER_LOG_NAME = "scheduler.log";
+const char *const SCHEDULER_PERF_NAME = "scheduler.perf";
+
+
 int main(int argc, char *argv[])
 {
     if (argc != 3)
@@ -63,20 +56,18 @@ int main(int argc, char *argv[])
         exit(EXIT_FAILURE);
     }
 
-    // Open file for writing
-    logFile = fopen("scheduler.log", "w");
-    perf = fopen("scheduler.perf", "w");
+    /* Open output files */
+    logFile = fopen(SCHEDULER_LOG_NAME, "w");
+    perfFile = fopen(SCHEDULER_PERF_NAME, "w");
 
-    // Check if the file was opened successfully
     if (logFile == NULL)
     {
-        printf("Error opening scheduler.log!\n");
+        printf("Error opening %s!\n", SCHEDULER_LOG_NAME);
         return 1;
     }
-    // Check if the file was opened successfully
-    if (perf == NULL)
+    if (perfFile == NULL)
     {
-        printf("Error opening scheduler.perf!\n");
+        printf("Error opening %s!\n", SCHEDULER_PERF_NAME);
         return 1;
     }
 
@@ -95,12 +86,9 @@ int main(int argc, char *argv[])
     schedulerConfig->quantum = atoi(argv[2]);
     schedulerConfig->curr_quantum = schedulerConfig->quantum;
 
-    // Array of scheduling functions corresponding to each algorithm
-    void (*scheduleFunction[])(void *) = {scheduleHPF, scheduleSRTN, scheduleRR};
-
     selectedAlgorithmIndex = schedulerConfig->selected_algorithm - 1;
 
-    size_t prev_time = -1;
+    int prev_time = -1;
     float prev_time_float = -.5;
 
     // Allocate the data structure depending on the selected algorithm
@@ -109,18 +97,18 @@ int main(int argc, char *argv[])
 
     initClk();
 
-    printf("Scheduler id: %d\n", getpid());
-
     while (1)
     {
         int curr_time = getClk();
         float curr_time_float = getClkFloat();
-        // Handle context switching if the queue front changed
         generateProcesses();
+        
         if (curr_time_float - prev_time_float == 1)
         {
             PCB *front_process = getRunningProcess(schedulerConfig->selected_algorithm);
-            if (((running_process != NULL) != (front_process != NULL)) || (running_process && running_process->fork_id != front_process->fork_id))
+
+            if (((running_process != NULL) != (front_process != NULL)) || 
+                (running_process && running_process->fork_id != front_process->fork_id))
             {
                 printf("Context Switching\n");
                 contentSwitch(front_process, running_process, getClk(), logFile);
@@ -129,16 +117,18 @@ int main(int argc, char *argv[])
                     schedulerConfig->curr_quantum = schedulerConfig->quantum;
                 curr_time = getClk();
             }
-             //printf("Float Time Step: %f\n", curr_time_float);
+
+            // printf("Float Time Step: %f\n", curr_time_float);
             prev_time_float = curr_time_float;
         }
+
         // Run selected algorithm if the clock has ticked
         if (curr_time != prev_time)
         {
             PCB *front_process = getRunningProcess(schedulerConfig->selected_algorithm);
             prev_time = curr_time;
-            if(front_process!=NULL)printf("front  %d\n",front_process->fork_id);
-            printf("Time Step: %ld\n", prev_time);
+
+            printf("Time Step: %d\n", prev_time);
         }
 
         if (is_running_queue_empty(schedulerConfig->selected_algorithm) && is_queue_empty(queue) && endScheduler)
@@ -146,12 +136,11 @@ int main(int argc, char *argv[])
             break;
         }
     }
-    printf("Generating Output files!!!!\n\n");
-    addPref(perf);
-    fflush(logFile);
-    fflush(perf);
 
-    clearResources(0);
+    printf("Generating Output files!!!!\n\n");
+    addPerf(perfFile);
+    fflush(logFile);
+    fflush(perfFile);
 
     // Upon termination release the clock resources.
     destroyClk(false);
@@ -205,8 +194,6 @@ static void terminateRunningProcess(int signum)
     PCB *process = popRunningProcess(selected_algo);
     pid_t process_id = process->fork_id;
 
-    // printQueue(ready_queue);
-
     wta_values = realloc(wta_values, sizeof(float) * total_processes);
     if (wta_values == NULL)
     {
@@ -243,6 +230,10 @@ static void terminateRunningProcess(int signum)
 
 /**
  * noMoreProcesses - Informs the scheduler that no more processes would be sent.
+ * @param signum: Signal number.
+ *
+ * It sets a flag *endScheduler* with true, which we check over to know if there
+ * are any more processes that would be sent or not.
  */
 static void noMoreProcesses(int signum)
 {
@@ -270,9 +261,19 @@ static void clearResources(int signum)
 
     // Close opened files
     fclose(logFile);
-    fclose(perf);
+    fclose(perfFile);
 
     printf("Cleared Scheduler Resources\n");
+}
+
+/**
+ * processDecremented - Decrement the time for the current running process.
+ * @param signum: Signal number.
+ */
+static void processDecremented(int signum)
+{
+    scheduleFunction[selectedAlgorithmIndex](ready_queue);
+    signal(SIGPWR, processDecremented);
 }
 
 //=============================== SCHEDULER FUNCTIONS ===============================//
@@ -369,11 +370,11 @@ static void generateProcesses()
         sprintf(args[3], "%d", process->runtime);
         sprintf(args[4], "%d", process->priority);
 
-        printf("Generating Process #%d\n", process->file_id);
+        // printf("Generating Process #%d\n", process->file_id);
         pid_t pid = fork();
         if (pid == -1)
         {
-            perror("Couldn't fork a process in scheduler");
+            // perror("Couldn't fork a process in scheduler");
             exit(EXIT_FAILURE);
         }
         else if (pid == 0)
@@ -382,7 +383,7 @@ static void generateProcesses()
             perror("Couldn't use execvp");
             exit(EXIT_FAILURE);
         }
-        usleep(100 * 1000);
+        usleep(10 * 1000);
         process->fork_id = pid;
         process->state = NEWBIE;
         addToReadyQueue(process);
@@ -418,6 +419,22 @@ static void addToReadyQueue(PCB *process)
     total_processes++;
 }
 
+/**
+ * getSchedulerConfigInstance - Function to get the singleton instance of SchedulerConfig.
+ * @return Pointer to the instance.
+ *
+ * Description: This function returns a pointer to the singleton instance of the SchedulerConfig
+ *              structure, ensuring that only one instance exists throughout the program.
+ */
+SchedulerConfig *getSchedulerConfigInstance()
+{
+    // Declare the static instance of the singleton
+    static SchedulerConfig instance = {.quantum = 0, .curr_quantum = 0};
+
+    // Return a pointer to the instance
+    return &instance;
+}
+
 //==================================== LOG DATA =====================================//
 
 /**
@@ -441,13 +458,13 @@ static float calculate_std_wta()
 }
 
 /**
- * addPref - Adds performance metrics to a log file
+ * addPerf - Adds performance metrics to a log file
  * @param file: Pointer to the log file
  *
  * This function adds CPU utilization, average WTA, average waiting time, and standard deviation of WTA
  * to a log file.
  */
-static void addPref(FILE *file)
+static void addPerf(FILE *file)
 {
     fprintf(file, "CPU utilization = %.2f%%\n", (float)((total_running_time) / (float)getClk()) * 100.0);
     fprintf(file, "Avg WTA = %.2f\n", total_weighted_turnaround_time / total_processes);
@@ -469,29 +486,10 @@ static void addPref(FILE *file)
  *
  * This function writes process finish information to a log file in a specific format.
  */
-static void addFinishLog(FILE *file, int currentTime, int processId, char *state, int arrivalTime, int totalRuntime, int waitingTime, int TA, float WTA)
+static void addFinishLog(FILE *file, int currentTime, int processId,
+                         char *state, int arrivalTime, int totalRuntime,
+                         int waitingTime, int TA, float WTA)
 {
-    fprintf(file, "At time %d process %d %s arr %d total %d remain %d wait %d TA %d WTA %.2f\n", currentTime, processId, state, arrivalTime, totalRuntime, 0, waitingTime, TA, WTA);
+    fprintf(file, "At time %d process %d %s arr %d total %d remain %d wait %d TA %d WTA %.2f\n",
+            currentTime, processId, state, arrivalTime, totalRuntime, 0, waitingTime, TA, WTA);
 }
-
-
-void processDecremented(int signum)
-{
-    printf("Process Decremented at time %d\n",getClk());
-    scheduleFunction[selectedAlgorithmIndex](ready_queue);
-    signal(SIGPWR, processDecremented);
-}
-
-// void printQueue(queue_t *head)
-// {
-//     queue_t *temp = *head;
-//     while (temp)
-//     {
-//         PCB *process = (PCB *)(temp->process);
-//         printf("(%d, %d, %d)", process->file_id, process->priority, process->runtime);
-//         if (temp->next)
-//             printf("->");
-//         temp = temp->next;
-//     }
-//     printf("\n");
-// }
