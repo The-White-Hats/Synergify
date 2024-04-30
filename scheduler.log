@@ -1,4 +1,0 @@
-At time 5 process 1 started arr 5 total 2 remain 2 wait 0
-At time 7 process 1 finished arr 5 total 2 remain 0 wait 0 TA 2 WTA 1.00
-At time 13 process 2 started arr 13 total 15 remain 15 wait 0
-At time 28 process 2 finished arr 13 total 15 remain 0 wait 0 TA 15 WTA 1.00

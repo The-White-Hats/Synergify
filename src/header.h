@@ -21,6 +21,18 @@
 ///==============================
 // Structs & Enums
 
+typedef struct input_info_s
+{
+    int algoChoice;
+    int quantum;
+    char filePath[512];
+} input_info_t;
+
+typedef struct input_msgbuf_s {
+  long mytype;
+ input_info_t info;
+} input_msgbuf_t;
+
 /**
  * struct process_info_s - Structure for holding process information
  * @id: Unique identifier for the process
