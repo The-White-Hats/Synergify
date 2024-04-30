@@ -61,7 +61,6 @@ void initClk()
  * Input: terminateAll: a flag to indicate whether that this is the end of simulation.
  *                      It terminates the whole system and releases resources.
  */
-
 void destroyClk(bool terminateAll)
 {
     shmdt(shmaddr);
@@ -70,4 +69,5 @@ void destroyClk(bool terminateAll)
         killpg(getpgrp(), SIGINT);
     }
 }
+
 #endif /* SAMPLE_HEADER_H */
