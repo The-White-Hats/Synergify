@@ -12,27 +12,19 @@
 #include <sys/stat.h>
 #include <sys/file.h>
 #include <sys/ipc.h>
+#include <sys/shm.h>
+#include <sys/sem.h>
 #include <sys/msg.h>
 #include <sys/wait.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <signal.h>
 #include <errno.h>
 #include <string.h>
 #include <stdarg.h>
+#include <pthread.h>
 
-#define GUI_SHKEY 400
-typedef struct input_info_s
-{
-    int algoChoice;
-    int quantum;
-    char filePath[512];
-} input_info_t;
-
-typedef struct input_msgbuf_s
-{
-    long mytype;
-    input_info_t info;
-} input_msgbuf_t;
+#define PATH_SIZE 256
 
 //------------------------------------------Loading Bar variables and functions------------------------------------------
 
@@ -59,8 +51,8 @@ static void WelcomeScreen(void);                             // Welcome screen
 static int CustomButton(Rectangle bounds, const char *text); // Custom button function
 static bool inputScreen();                                   // Input screen function
 static int autoType(const char *text, int current_frame, int max_frame_count, int x, int y, int font_size, Color color);
-void send_message();
-
+void run_process_generator();
+void read_input_file();
 // Global variables
 
 //----------------------------------------------- Screen variables--------------------------------------------------------
@@ -75,6 +67,7 @@ char quantumSize[32] = "\0"; // Buffer to store user input for quantum size
 int algoChoice = 0;          // Variable to store user choice for algorithm
 const char *algoOptions = "Non-preemptive Highest Priority First;Shortest Remaining time Next;Round Robin";
 int quantum = 1; // Initial value
+int totalTime = 5;
 
 char filePath[512] = {0}; // Buffer to store the file path
 
@@ -112,7 +105,8 @@ int main(void)
         {
             if (!once)
             {
-                send_message();
+                read_input_file();
+                run_process_generator();
                 once = true;
             }
             loadingBar();
@@ -127,26 +121,29 @@ int main(void)
     return 0;
 }
 
-void send_message()
+void run_process_generator()
 {
-    int msgq_id = msgget(GUI_SHKEY, 0666 | IPC_CREAT);
-    if (msgq_id == -1)
+    // Get path to the process.out
+    char *args[5];
+    args[0] = "/home/marwan/mywork/Synergify/bin/process_generator.out";
+    args[1] = (char *)malloc(12);
+    args[2] = (char *)malloc(12);
+    sprintf(args[1], "%d", algoChoice + 1);
+    sprintf(args[2], "%d", quantum);
+    args[3] = filePath;
+    args[4] = NULL;
+    int pid = fork();
+    if (pid == -1)
     {
-        perror("Error in create");
-        return;
+        perror("Couldn't fork a process in scheduler");
+        exit(EXIT_FAILURE);
     }
-    input_msgbuf_t msgbuf;
-
-    input_info_t info;
-    info.algoChoice = algoChoice;
-    info.quantum = quantum;
-    strncpy(info.filePath, filePath, sizeof(info.filePath) - 1);
-    info.filePath[sizeof(info.filePath) - 1] = '\0'; // Ensure null-termination
-
-    msgbuf.mytype = 1;
-    msgbuf.info = info;
-    msgsnd(msgq_id, &msgbuf, sizeof(msgbuf.info), IPC_NOWAIT);
-    printf("Message sent\n");
+    else if (pid == 0)
+    {
+        execvp(args[0], args);
+        perror("Couldn't use execvp");
+        exit(EXIT_FAILURE);
+    }
 }
 
 static void WelcomeScreen()
@@ -259,14 +256,14 @@ static void *LoadDataThread(void *arg)
     clock_t prevTime = clock(); // Previous time
 
     // We simulate data loading with a time counter for 5 seconds
-    while (timeCounter < 5000)
+    while (timeCounter < 1000 * totalTime)
     {
         clock_t currentTime = clock() - prevTime;
         timeCounter = currentTime * 1000 / CLOCKS_PER_SEC;
 
         // We accumulate time over a global variable to be used in
         // main thread as a progress bar
-        atomic_store_explicit(&dataProgress, timeCounter / 10, memory_order_relaxed);
+        atomic_store_explicit(&dataProgress, timeCounter / (2*totalTime), memory_order_relaxed);
     }
 
     // When data has finished loading, we set global variable
@@ -429,10 +426,35 @@ static bool inputScreen()
         DrawText("Quantum", screenWidth / 2 - 110, height + 86, 15, MAGENTA); // Change the font size and color as needed
         GuiSpinner((Rectangle){screenWidth / 2 - 40, height + 80, 180, 30}, "", &quantum, 1, 10000, false);
     }
-    if((buttonPressed || once) && fp == NULL ){
-        DrawText("Please select a file to continue", screenWidth / 2 - 60,height + ((algoChoice == 2) ? 225 : 150), 10, WHITE); // Change the font size and color as needed
+    if ((buttonPressed || once) && fp == NULL)
+    {
+        DrawText("Please select a file to continue", screenWidth / 2 - 60, height + ((algoChoice == 2) ? 225 : 150), 10, WHITE); // Change the font size and color as needed
         once = true;
         return false;
     }
     return buttonPressed;
+}
+void read_input_file()
+{
+    FILE *input_file;
+    input_file = fopen(filePath, "r");
+    if (!input_file)
+    {
+        printf("\nCould not open file processes.txt!!\n");
+        exit(-1);
+    }
+
+    char buffer[256];
+    int cnt = 0;
+    while (fgets(buffer, sizeof(buffer), input_file))
+    {
+        if (buffer[0] == '#')
+            continue;
+        int id, arrival, runtime, priority;
+        sscanf(buffer, "%d %d %d %d", &id, &arrival, &runtime, &priority);
+        totalTime += runtime + ((cnt == 1) ? arrival : 0);
+        cnt++;
+    }
+    printf("Total Time: %d\n", totalTime);
+    fclose(input_file);
 }
