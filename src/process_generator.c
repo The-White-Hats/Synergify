@@ -76,7 +76,7 @@ int main(int argc, char *argv[])
 
             msgsnd(msgq_id, &msgbuf, sizeof(msgbuf.message), IPC_NOWAIT);
             
-            dequeue(processes_queue);
+            free((process_info_t *)dequeue(processes_queue));
             process_data = (process_info_t *)front(processes_queue);
         }
 
@@ -84,6 +84,8 @@ int main(int argc, char *argv[])
             kill(scheduler_id, SIGUSR1);
     }
     
+    free(processes_queue);
+
     kill(scheduler_id, SIGUSR2);
     pause();
 

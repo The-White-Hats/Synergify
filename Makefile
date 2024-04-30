@@ -18,4 +18,4 @@ all: clean build
 
 run:
 	./bin/test_generator.out
-	./bin/process_generator.out
+	valgrind --leak-check=full --show-leak-kinds=all ./bin/process_generator.out
