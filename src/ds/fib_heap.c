@@ -28,10 +28,12 @@ static heap_node_t *node_init(int key, void *element)
 /**
  * node_free - function to free memory allocated for a heap node
  * @param node: the heap node to free
+ * @param free_elem: determine if element is freed too.
  */
-static void node_free(heap_node_t *const node)
+static void node_free(heap_node_t *const node, short free_elem)
 {
-  if (node->element != NULL) {
+  if (node->element != NULL && free_elem)
+  {
     free(node->element);
   }
   free(node);
@@ -412,17 +414,71 @@ short fib_heap_is_healthy(fib_heap_t *heap)
 }
 
 /**
+ * fib_heap_copy_tree - function to recursively copy a tree of nodes in a Fibonacci heap
+ * @param node: the root of the tree to copy
+ * @param dist: the destination Fibonacci heap
+ * @param keyExtractor: function pointer to extract keys from elements
+ */
+void fib_heap_copy_tree(heap_node_t *node, fib_heap_t *dist, int (*keyExtractor)(void *))
+{
+  heap_node_t *current;
+  int key;
+
+  if (!node)
+    return;
+  current = node;
+
+  do
+  {
+    key = keyExtractor(current->element);
+    fib_heap_insert(dist, current->element, key);
+
+    fib_heap_copy_tree(current->child, dist, keyExtractor);
+
+    current = current->right;
+  } while (current != node);
+}
+
+/**
+ * fib_heap_copy - function to copy a Fibonacci heap
+ * @param heap: the Fibonacci heap to copy from
+ * @param dist: the destination Fibonacci heap
+ * @param keyExtractor: function pointer to extract keys from elements
+ */
+void fib_heap_copy(fib_heap_t *heap, fib_heap_t *dist, int (*keyExtractor)(void *))
+{
+  heap_node_t *root;
+  int key;
+
+  if (!heap)
+    return;
+
+  if (!heap->min)
+    return;
+
+  // copy all trees nodes.
+  root = heap->min;
+  do
+  {
+    key = keyExtractor(root->element);
+    fib_heap_insert(dist, root->element, key);
+    root = root->right;
+  } while (root != heap->min);
+}
+
+/**
  * fib_heap_node_free - function to recursively free memory allocated for a heap node and its children
  * @param node: the root of the subtree to free
+ * @param free_elem: determine if element is freed too.
  */
-static void fib_heap_node_free(heap_node_t *node)
+static void fib_heap_node_free(heap_node_t *node, short free_elem)
 {
   heap_node_t *child, *sibling, *first_child;
 
   first_child = node->child;
   if (!first_child)
   {
-    node_free(node);
+    node_free(node, free_elem);
     return;
   }
 
@@ -431,20 +487,21 @@ static void fib_heap_node_free(heap_node_t *node)
   while (child != first_child)
   {
     sibling = child->right;
-    fib_heap_node_free(child);
+    fib_heap_node_free(child, free_elem);
     child = sibling;
   }
 
-  fib_heap_node_free(child);
+  fib_heap_node_free(child, free_elem);
 
-  node_free(node);
+  node_free(node, free_elem);
 }
 
 /**
  * fib_heap_free - function to free memory allocated for a Fibonacci heap
  * @param heap: the Fibonacci heap to free
+ * @param free_elem: determine if element is freed too.
  */
-void fib_heap_free(fib_heap_t *heap)
+void fib_heap_free(fib_heap_t *heap, short free_elem)
 {
   heap_node_t *root, *node, *sibling;
 
@@ -463,11 +520,11 @@ void fib_heap_free(fib_heap_t *heap)
   while (node != root)
   {
     sibling = node->right;
-    fib_heap_node_free(node);
+    fib_heap_node_free(node, free_elem);
     node = sibling;
   }
 
-  fib_heap_node_free(node);
+  fib_heap_node_free(node, free_elem);
 
   free(heap);
   return;

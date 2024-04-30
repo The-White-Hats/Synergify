@@ -15,6 +15,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdarg.h>
+#include <pthread.h>
 
 #define PATH_SIZE 256
 

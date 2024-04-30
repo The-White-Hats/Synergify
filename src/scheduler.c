@@ -1,5 +1,6 @@
 #include "clk.h"
 #include "header.h"
+#include "gui/gui.h"
 #include "ds/fib_heap.h"
 #include "ds/queue.h"
 #include <math.h>
@@ -19,6 +20,9 @@ static short is_running_queue_empty(scheduling_algo selected_algo);
 static void generateProcesses();
 static void addToReadyQueue(PCB *process);
 SchedulerConfig *getSchedulerConfigInstance();
+
+//====================================== GUI ========================================//
+void createTaskManager(pthread_t *gui_thread);
 
 //==================================== LOG DATA =====================================//
 static float calculate_std_wta();
@@ -95,6 +99,10 @@ int main(int argc, char *argv[])
     ready_queue = allocateDataStructure(schedulerConfig->selected_algorithm);
     queue = create_queue();
 
+    // Create task manager gui
+    pthread_t gui_thread;
+    createTaskManager(&gui_thread);
+
     initClk();
 
     while (1)
@@ -136,6 +144,14 @@ int main(int argc, char *argv[])
     addPerf(perfFile);
     fflush(logFile);
     fflush(perfFile);
+
+    // Join the gui thread
+    if (pthread_join(gui_thread, NULL) != 0) {
+        perror("Error joining thread");
+        exit(EXIT_FAILURE);
+    }
+    
+    clearResources(0);
 
     // Upon termination release the clock resources.
     destroyClk(false);
@@ -184,6 +200,7 @@ static void terminateRunningProcess(int signum)
 {
     SchedulerConfig *schedulerConfig = getSchedulerConfigInstance();
     scheduling_algo selected_algo = schedulerConfig->selected_algorithm;
+    schedulerConfig->curr_quantum = schedulerConfig->quantum;
 
     int stat_loc;
     PCB *process = popRunningProcess(selected_algo);
@@ -247,15 +264,14 @@ static void clearResources(int signum)
 
     // Deallocate the data structures
     if (selected_algo == RR)
-        queue_free((queue_t *)ready_queue);
+        queue_free((queue_t *)ready_queue, true);
     else
-        fib_heap_free((fib_heap_t *)ready_queue);
-    queue_free((queue_t *)queue);
+        fib_heap_free((fib_heap_t *)ready_queue, 1);
+    queue_free((queue_t *)queue, true);
 
     // Close opened files
     fclose(logFile);
     fclose(perfFile);
-
 }
 
 /**
@@ -424,6 +440,16 @@ SchedulerConfig *getSchedulerConfigInstance()
 
     // Return a pointer to the instance
     return &instance;
+}
+
+//====================================== GUI ========================================//
+
+void createTaskManager(pthread_t *gui_thread) {
+    int result = pthread_create(gui_thread, NULL, initTaskManager, ready_queue);
+    if (result != 0) {
+        perror("GUI Thread Failed");
+        exit(EXIT_FAILURE);
+    }
 }
 
 //==================================== LOG DATA =====================================//

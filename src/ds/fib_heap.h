@@ -93,7 +93,16 @@ int fib_heap_size(fib_heap_t *heap);
 short fib_heap_is_healthy(fib_heap_t *heap);
 
 /**
+ * fib_heap_copy - function to copy a Fibonacci heap
+ * @param heap: the Fibonacci heap to copy from
+ * @param dist: the destination Fibonacci heap
+ * @param keyExtractor: function pointer to extract keys from elements
+ */
+void fib_heap_copy(fib_heap_t *heap, fib_heap_t *dist, int (*keyExtractor)(void *));
+
+/**
  * fib_heap_free - function to free memory allocated for a Fibonacci heap
  * @param heap: the Fibonacci heap to free
+ * @param free_elem: determine if element is freed too.
  */
-void fib_heap_free(fib_heap_t *heap);
+void fib_heap_free(fib_heap_t *heap, short free_elem);
