@@ -170,7 +170,6 @@ void contentSwitch(PCB *new_front, PCB *old_front, int currentTime, FILE *file)
                new_front->waiting_time);
     }
 
-    printf("Current running process: %d , current time: %d\n", new_front->fork_id, currentTime);
     new_front->state = RUNNING;
     kill(new_front->fork_id, SIGCONT);
 }

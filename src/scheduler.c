@@ -110,7 +110,6 @@ int main(int argc, char *argv[])
             if (((running_process != NULL) != (front_process != NULL)) || 
                 (running_process && running_process->fork_id != front_process->fork_id))
             {
-                printf("Context Switching\n");
                 contentSwitch(front_process, running_process, getClk(), logFile);
                 running_process = front_process;
                 if (selectedAlgorithmIndex == RR)
@@ -118,7 +117,6 @@ int main(int argc, char *argv[])
                 curr_time = getClk();
             }
 
-            // printf("Float Time Step: %f\n", curr_time_float);
             prev_time_float = curr_time_float;
         }
 
@@ -127,8 +125,6 @@ int main(int argc, char *argv[])
         {
             PCB *front_process = getRunningProcess(schedulerConfig->selected_algorithm);
             prev_time = curr_time;
-
-            printf("Time Step: %d\n", prev_time);
         }
 
         if (is_running_queue_empty(schedulerConfig->selected_algorithm) && is_queue_empty(queue) && endScheduler)
@@ -137,7 +133,6 @@ int main(int argc, char *argv[])
         }
     }
 
-    printf("Generating Output files!!!!\n\n");
     addPerf(perfFile);
     fflush(logFile);
     fflush(perfFile);
@@ -217,8 +212,6 @@ static void terminateRunningProcess(int signum)
                  getClk() - running_process->arrival,
                  (float)(getClk() - running_process->arrival) / running_process->runtime);
 
-
-    printf("Process %d  running %d Terminated at %d.\n", process->fork_id,running_process->fork_id, getClk());
     free(running_process);
 
     running_process = NULL;
@@ -263,7 +256,6 @@ static void clearResources(int signum)
     fclose(logFile);
     fclose(perfFile);
 
-    printf("Cleared Scheduler Resources\n");
 }
 
 /**
@@ -370,7 +362,6 @@ static void generateProcesses()
         sprintf(args[3], "%d", process->runtime);
         sprintf(args[4], "%d", process->priority);
 
-        // printf("Generating Process #%d\n", process->file_id);
         pid_t pid = fork();
         if (pid == -1)
         {

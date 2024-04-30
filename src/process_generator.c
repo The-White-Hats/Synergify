@@ -56,7 +56,6 @@ int main(int argc, char *argv[])
     initClk();
     // To get time use this
     // int x = getClk();
-    // printf("current time is %d\n", x);
     // TODO Generation Main Loop
     // 5. Create a data structure for processes and provide it with its parameters.
     // 6. Send the information to the scheduler at the appropriate time.
@@ -96,8 +95,6 @@ int main(int argc, char *argv[])
 void clearResources(int signum)
 {
     msgctl(msgq_id, IPC_RMID, (struct msqid_ds *)0);
-    printf("\nIPC resources for process generator was cleared.\n");
-    printf("\nProcess Generator is terminating\n");
     exit(0);
 }
 
