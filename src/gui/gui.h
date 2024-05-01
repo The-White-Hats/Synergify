@@ -4,9 +4,12 @@
 #include "raylib.h"
 #include "raymath.h"
 
-#define BACKGROUND_COLOR (Color){ 25, 25, 25, 255 }
-#define PRIMARY_COLOR (Color){ 32, 32, 32, 255 }
-#define SECONDARY_COLOR (Color){ 45, 45, 45, 255 }
+#define BACKGROUND_COLOR (Color){ 8, 2, 3, 255 }
+#define PRIMARY_COLOR (Color){ 116, 56, 194, 255 }
+#define SECONDARY_COLOR (Color){ 66, 31, 112, 255 }
+#define ACCENT_COLOR (Color) { 190, 140, 255, 255 }
+#define TEXT_COLOR (Color){ 247, 245, 250, 255 }
+#define TEXT_LIGHT_COLOR (Color){ 251, 250, 253, 255 }
 
 typedef enum {
   PAGE_WELCOME,

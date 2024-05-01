@@ -27,7 +27,7 @@ static void initSidebar(GUIPage *page, int *offset) {
     page->elements[i].type = ELEMENT_ROUNDED_RECTANGLE;
     page->elements[i].color = PRIMARY_COLOR;
     page->elements[i].text = text[i - 1];
-    page->elements[i].text_color = WHITE;
+    page->elements[i].text_color = TEXT_COLOR;
     page->elements[i].text_offset = (Vector2){ 25, 25};
     page->elements[i].font_size = 26;
     page->elements[i].active = false;
@@ -50,7 +50,7 @@ static void initHeader(GUIPage *page, int *offset, const char *header) {
   page->elements[*offset].type = ELEMENT_RECTANGLE;
   page->elements[*offset].color = BACKGROUND_COLOR;
   page->elements[*offset].text = header;
-  page->elements[*offset].text_color = WHITE;
+  page->elements[*offset].text_color = TEXT_COLOR;
   page->elements[*offset].text_offset = (Vector2){ 25, 40};
   page->elements[*offset].font_size = 30;
   page->elements[*offset].active = false;
@@ -163,7 +163,7 @@ void initProcessesPage(GUIPage *page) {
     page->elements[idx].type = ELEMENT_RECTANGLE;
     page->elements[idx].color = BACKGROUND_COLOR;
     page->elements[idx].text = headerNames[i];
-    page->elements[idx].text_color = WHITE;
+    page->elements[idx].text_color = TEXT_COLOR;
     page->elements[idx].text_offset = (Vector2){ 20, 15};
     page->elements[idx].font_size = 20;
     page->elements[idx].active = false;
