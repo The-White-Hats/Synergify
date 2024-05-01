@@ -23,6 +23,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <pthread.h>
+#include "../header.h"
 
 #define PATH_SIZE 256
 
@@ -79,7 +80,9 @@ int main(void)
     InitWindow(screenWidth, screenHeight, "Process Scheduler Simulation");
     SetTargetFPS(60);
 
-    Texture2D background = LoadTexture("./assets/images/neon.png");
+    char absolute_path[PATH_SIZE];
+    getAbsolutePath(absolute_path, "assets/images/neon.png");
+    Texture2D background = LoadTexture(absolute_path);
 
     BeginDrawing();
     // Draw the background image
@@ -125,7 +128,10 @@ void run_process_generator()
 {
     // Get path to the process.out
     char *args[5];
-    args[0] = "/home/marwan/mywork/Synergify/bin/process_generator.out";
+    char absolute_path[PATH_SIZE];
+    getAbsolutePath(absolute_path, "process_generator.out");
+
+    args[0] = absolute_path;
     args[1] = (char *)malloc(12);
     args[2] = (char *)malloc(12);
     sprintf(args[1], "%d", algoChoice + 1);
@@ -149,7 +155,15 @@ void run_process_generator()
 static void WelcomeScreen()
 {
 
-    Texture2D developers[] = {LoadTexture("./assets/images/Ahmed Alaa.png"), LoadTexture("./assets/images/Akram.png"), LoadTexture("./assets/images/mo2.png"), LoadTexture("./assets/images/marwan.png")};
+    char dev_absolute_path[4][PATH_SIZE];
+    getAbsolutePath(dev_absolute_path[0], "assets/images/Ahmed Alaa.png");
+    getAbsolutePath(dev_absolute_path[1], "assets/images/Akram.png");
+    getAbsolutePath(dev_absolute_path[2], "assets/images/mo2.png");
+    getAbsolutePath(dev_absolute_path[3], "assets/images/marwan.png");
+    Texture2D developers[] = {LoadTexture(dev_absolute_path[0]),
+                            LoadTexture(dev_absolute_path[1]),
+                            LoadTexture(dev_absolute_path[2]),
+                            LoadTexture(dev_absolute_path[3])};
     const char *welcomeText = "Welcome to";
     const char *projectName = "Synergify";
     const char *description[] = {"This is a Process Scheduler Simulation", "Enhance your understanding of the process scheduling algorithms", "Avialable algorithms: Non-preemptive Highest Priority First, Shortest Remaining time Next, Round Robin", "Task manager to track the progress of the processes", "Image Created at the end to show information about Processes", "Enjoy!"};
