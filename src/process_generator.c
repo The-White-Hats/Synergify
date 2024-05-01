@@ -5,8 +5,6 @@
 #include <stdarg.h>
 #include <unistd.h>
 
-
-
 ///==============================
 // constants related to process_generator
 const char *scheduler_file_name = "scheduler.out\0";
@@ -16,7 +14,7 @@ const char *clk_file_name = "clk.out\0";
 ///==============================
 // functions
 void clearResources(int);
-void read_input_file(queue_t *);
+void read_input_file(queue_t *, char *);
 void childLost(int);
 void get_scheduling_algo(int *algorithm_choosen, int *quantum_time);
 int start_program(const char *const file_name, int n, ...);
@@ -27,7 +25,7 @@ int start_program(const char *const file_name, int n, ...);
 int msgq_id;
 ///==============================
 
-int main(int argc, char *argv[])
+int main(int argc, char *argv[]) // algorithm, quantum, file_path
 {
     ///==============================
     // data
@@ -39,14 +37,14 @@ int main(int argc, char *argv[])
     signal(SIGINT, clearResources);
     signal(SIGCHLD, childLost);
     ///==============================
-    
+
     // TODO Initialization
     // 1. Read the input files.
-    read_input_file(processes_queue);
+    read_input_file(processes_queue, argv[3]);
 
     // 2. Ask the user for the chosen scheduling algorithm and its parameters, if there are any.
-    int algorithm_choosen = -1, quantum_time = 0;
-    get_scheduling_algo(&algorithm_choosen, &quantum_time);
+    int algorithm_choosen = atoi(argv[1]), quantum_time = atoi(argv[2]);
+    // get_scheduling_algo(&algorithm_choosen, &quantum_time);
 
     // 3. Initiate and create the scheduler and clock processes.
     int clk_id = start_program(clk_file_name, 0);
@@ -59,7 +57,7 @@ int main(int argc, char *argv[])
     // TODO Generation Main Loop
     // 5. Create a data structure for processes and provide it with its parameters.
     // 6. Send the information to the scheduler at the appropriate time.
-    
+
     msgq_id = msgget(SHKEY, 0666 | IPC_CREAT);
     msgbuf_t msgbuf;
 
@@ -75,7 +73,7 @@ int main(int argc, char *argv[])
             msgbuf.message = (*process_data);
 
             msgsnd(msgq_id, &msgbuf, sizeof(msgbuf.message), IPC_NOWAIT);
-            
+
             free((process_info_t *)dequeue(processes_queue));
             process_data = (process_info_t *)front(processes_queue);
         }
@@ -83,7 +81,7 @@ int main(int argc, char *argv[])
         if (send_signal)
             kill(scheduler_id, SIGUSR1);
     }
-    
+
     free(processes_queue);
 
     kill(scheduler_id, SIGUSR2);
@@ -103,11 +101,11 @@ void clearResources(int signum)
 /**
  * read_input_file - to read the processes and their parameters from a text file
  */
-void read_input_file(queue_t *processes_queue)
+void read_input_file(queue_t *processes_queue, char *file_path)
 {
     FILE *input_file;
-    char file_path[PATH_SIZE];
-    getAbsolutePath(file_path, "processes.txt");
+    // char file_path[PATH_SIZE];
+    // getAbsolutePath(file_path, "processes.txt");
     input_file = fopen(file_path, "r");
     if (!input_file)
     {
@@ -132,7 +130,7 @@ void read_input_file(queue_t *processes_queue)
  * get_scheduling_algo - read the scheduling algo and its parameters
  * @algorithm_choosen: a pointer to store the chosen algo
  * @quantum_time: a pointer to store the round robin quantum if it was choosen
-*/
+ */
 void get_scheduling_algo(int *algorithm_choosen, int *quantum_time)
 {
     printf("\n");
@@ -228,7 +226,7 @@ int start_program(const char *const file_name, int n, ...)
         printf("\nAn error occurred while forking a new process\n");
         exit(-1);
     }
-    
+
     return process_id;
 }
 
