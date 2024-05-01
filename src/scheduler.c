@@ -272,6 +272,8 @@ static void clearResources(int signum)
     // Close opened files
     fclose(logFile);
     fclose(perfFile);
+
+    killpg(getgid(), SIGINT);
 }
 
 /**
