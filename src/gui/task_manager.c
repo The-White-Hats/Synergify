@@ -325,7 +325,7 @@ static void drawProcessesWithOrder(fib_heap_t *custom_heap)
     {
         drawProcess((PCB *)fib_heap_extract_min(custom_heap), i++, scrollY);
     }
-    scrollY += GetMouseWheelMove() * 20;
+    scrollY -= GetMouseWheelMove() * 20;
     scrollY = Clamp(scrollY, 0, i * 70);
     EndScissorMode();
     fib_heap_free(custom_heap, 0);
