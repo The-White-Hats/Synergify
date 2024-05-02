@@ -462,6 +462,9 @@ void fib_heap_copy(fib_heap_t *heap, fib_heap_t *dist, int (*keyExtractor)(void 
   {
     key = keyExtractor(root->element);
     fib_heap_insert(dist, root->element, key);
+
+    fib_heap_copy_tree(root->child, dist, keyExtractor);
+    
     root = root->right;
   } while (root != heap->min);
 }
