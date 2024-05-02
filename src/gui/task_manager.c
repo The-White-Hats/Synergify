@@ -18,9 +18,10 @@ static fib_heap_t *copyProcessesFromReadyQUeue();
 static fib_heap_t *copyProcessesWithOrder(fib_heap_t *heap);
 static fib_heap_t *copyProcessesFromQueue(queue_t *queue);
 static int selectKey(void *data);
+static void updateData();
 //==================================== Draw GUI =====================================//
 static void drawProcessesWithOrder(fib_heap_t *custom_heap);
-static void drawProcess(PCB *custom_heap, int idx);
+static void drawProcess(PCB *custom_heap, int idx, int offsetY);
 static void drawPerformanceGraphs(fib_heap_t *custom_heap);
 //=================================== Clear DATA ====================================//
 
@@ -53,10 +54,19 @@ void initTaskManager(void *ready_queue)
 
     SetTargetFPS(60);
 
+    int prev_time = -1;
+
     while (!WindowShouldClose()) // Detect window close button or ESC key
     {
         // check input according to current page.
         checkMouseInput(page);
+
+        int current_time = getClk();
+        if (current_time != prev_time) {
+            prev_time = current_time;
+            updateData();
+        }
+
 
         BeginDrawing();
         // draw the current page.
@@ -231,6 +241,10 @@ void drawPage(GUIPage *page)
         // Add more drawing commands as needed
     }
 
+    // Draw time step
+    char timeStep[6];
+    sprintf(timeStep, "%d", getClk());
+    DrawTextEx(gui.font, timeStep, (Vector2){gui.WIDTH - 100, 40}, 30, 0, TEXT_COLOR);
 
     // Draw Page Specific Functionalities
     fib_heap_t *custom_heap = copyProcessesFromReadyQUeue();
@@ -247,11 +261,11 @@ void drawPage(GUIPage *page)
     }
 }
 
-static void drawProcess(PCB *element, int idx)
+static void drawProcess(PCB *element, int idx, int offsetY)
 {
     int HEIGHT = 60, GAP = 10, font_size = 24, textOffsetY = 18, textOffsetX = 170;
     Color color = PRIMARY_COLOR;
-    Rectangle bounds = {gui.SIDEBAR_WIDTH + 10, 160 + idx * HEIGHT + idx * GAP, gui.WIDTH - gui.SIDEBAR_WIDTH - 20, HEIGHT};
+    Rectangle bounds = { gui.SIDEBAR_WIDTH + 16, 160 + idx * HEIGHT + idx * GAP - offsetY, gui.WIDTH - gui.SIDEBAR_WIDTH - 32, HEIGHT};
     DrawRectangleRounded(bounds, 0.2, 2, color);
 
     // Draw Process Info
@@ -303,21 +317,24 @@ static void drawProcess(PCB *element, int idx)
 
 static void drawProcessesWithOrder(fib_heap_t *custom_heap)
 {
+    static int scrollY = 0;
+    BeginScissorMode(gui.SIDEBAR_WIDTH, 150, gui.WIDTH - gui.SIDEBAR_WIDTH, gui.HEIGHT - 180);
     // Display custom ordered heap
     size_t i = 0;
-    while (fib_heap_size(custom_heap) > 0 && i < 12)
+    while (fib_heap_size(custom_heap) > 0)
     {
-        drawProcess((PCB *)fib_heap_extract_min(custom_heap), i++);
+        drawProcess((PCB *)fib_heap_extract_min(custom_heap), i++, scrollY);
     }
+    scrollY += GetMouseWheelMove() * 20;
+    scrollY = Clamp(scrollY, 0, i * 70);
+    EndScissorMode();
     fib_heap_free(custom_heap, 0);
 }
 
-static void updateData(fib_heap_t *custom_heap) {
-    static int prev_time = 0, cpu_runtime = 0;
+static void updateData() {
+    static int cpu_runtime = 0;
     int current_time = getClk();
-
-    if (prev_time == current_time) return;
-    prev_time = current_time;
+    fib_heap_t *custom_heap = copyProcessesFromReadyQUeue();
 
     // Calculate performance
     int num_of_processes = fib_heap_size(custom_heap);
@@ -327,15 +344,17 @@ static void updateData(fib_heap_t *custom_heap) {
         const PCB *element = fib_heap_extract_min(custom_heap);
         if (element->state == RUNNING) idle = false;
     }
-    cpu_runtime += !idle;
+    cpu_runtime += (!idle ? 1 : 0);
 
     // Update graphs stats
     processes_num[graph_idx] = num_of_processes;
     cpu_state[graph_idx] = (!idle ? 1 : 0);
-    cpu_util[plot_idx] = cpu_runtime * 100 / current_time;
+    cpu_util[plot_idx] = (current_time == 0 ? 0 : cpu_runtime * 100 / current_time);
     // Update indexes
     graph_idx = (graph_idx + 1) % GRAPH_SIZE;
     plot_idx = (plot_idx + 1) % PLOT_GRAPH_SIZE;
+    
+    fib_heap_free(custom_heap, 0);
 }
 
 static void drawGraph(int values[GRAPH_SIZE], int originX, int originY, int mx) {
@@ -444,8 +463,6 @@ static void drawPlotGraph(int values[PLOT_GRAPH_SIZE], int originX, int originY)
 }
 
 static void drawPerformanceGraphs(fib_heap_t *custom_heap) {
-    updateData(custom_heap);
-
     DrawTextEx(gui.font, "Process Number", (Vector2){gui.SIDEBAR_WIDTH + 50, gui.NAV_HEIGHT + 80}, 20, 0, TEXT_COLOR);
     drawGraph(processes_num, gui.SIDEBAR_WIDTH + 50, gui.NAV_HEIGHT + 400, 5);
     DrawTextEx(gui.font, "CPU State", (Vector2){gui.SIDEBAR_WIDTH + 700, gui.NAV_HEIGHT + 80}, 20, 0, TEXT_COLOR);

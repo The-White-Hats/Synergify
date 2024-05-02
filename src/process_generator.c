@@ -23,6 +23,7 @@ int start_program(const char *const file_name, int n, ...);
 ///==============================
 /// global variables for process_generator
 int msgq_id;
+int scheduler_id;
 ///==============================
 
 int main(int argc, char *argv[]) // algorithm, quantum, file_path
@@ -48,7 +49,7 @@ int main(int argc, char *argv[]) // algorithm, quantum, file_path
 
     // 3. Initiate and create the scheduler and clock processes.
     int clk_id = start_program(clk_file_name, 0);
-    int scheduler_id = start_program(scheduler_file_name, 2, algorithm_choosen, quantum_time);
+    scheduler_id = start_program(scheduler_file_name, 2, algorithm_choosen, quantum_time);
 
     // 4. Use this function after creating the clock process to initialize clock
     initClk();
@@ -82,7 +83,7 @@ int main(int argc, char *argv[]) // algorithm, quantum, file_path
             kill(scheduler_id, SIGUSR1);
     }
 
-    free(processes_queue);
+    free(processes_queue);killpg(getgid(), SIGKILL);
 
     kill(scheduler_id, SIGUSR2);
     pause();
@@ -94,6 +95,8 @@ int main(int argc, char *argv[]) // algorithm, quantum, file_path
 
 void clearResources(int signum)
 {
+    if (signum != 0)
+        kill(scheduler_id, SIGINT);
     msgctl(msgq_id, IPC_RMID, (struct msqid_ds *)0);
     exit(0);
 }
