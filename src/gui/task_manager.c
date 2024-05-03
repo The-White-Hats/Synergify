@@ -42,6 +42,7 @@ void initTaskManager(void *ready_queue)
     gui.NAV_HEIGHT = 50;
     gui.background = BACKGROUND_COLOR;
     gui.process_sort = SORT_ID;
+    SetConfigFlags(FLAG_MSAA_4X_HINT);
     InitWindow(gui.WIDTH, gui.HEIGHT, "Task Manager Simulator");
 
     // Load font
