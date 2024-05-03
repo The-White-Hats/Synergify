@@ -576,6 +576,120 @@ void drawMonitorLogs() {
     queue_free(temp_queue, 0);
 }
 
+static void drawGraph(int values[GRAPH_SIZE], int originX, int originY, int mx) {
+    int x_plot[GRAPH_SIZE];
+    int j = 0;
+    int i = graph_idx;
+
+    do {
+        if (values[i] != -1) {
+            if (values[i] > mx) mx = values[i];
+            x_plot[j++] = values[i];
+        }
+        i = (i + 1) % GRAPH_SIZE;
+    } while(i != graph_idx);
+    // Draw axis
+    int width = 30, gap = 12;
+    int axisYLength = 270, axisXLength = (width + gap) * (GRAPH_SIZE + GRAPH_PADDING);
+    DrawLine(originX, originY, originX, originY - axisYLength - 10, TEXT_COLOR);
+    DrawLine(originX, originY, originX + axisXLength, originY, TEXT_COLOR);
+
+    // Draw y plots
+    char str[6];
+    sprintf(str, "%d", mx);
+    DrawTextEx(gui.font, str, (Vector2){originX - 30, originY - axisYLength - 5}, 20, 0, TEXT_COLOR);
+    DrawLine(originX, originY - axisYLength, originX - 4, originY - axisYLength, TEXT_COLOR);
+
+    // Draw x plots
+    int current_time = getClk() - j + 1;
+    for (int i = 0, xOffset = originX; i < (GRAPH_SIZE + GRAPH_PADDING); i++) {
+        // Draw time
+        sprintf(str, "%d", current_time);
+        DrawTextEx(gui.font, str, (Vector2){xOffset + 5, originY + 10}, 20, 0, TEXT_COLOR);
+
+        current_time++;
+        xOffset += width + gap;
+    }
+
+    // Draw Graph
+    Rectangle bounds = {originX, originY, width, 0};
+    Color temp = PRIMARY_COLOR;
+    for (int i = 0; i < j; i++) {
+        // Draw rectangle
+        int height = x_plot[i] * axisYLength / mx;
+        bounds.y = originY - height;
+        bounds.height = height;
+        if (i == j - 1) temp = ACCENT_COLOR;
+        DrawRectangleRounded(bounds, 0.2, 0, temp);
+        bounds.height -= height / 2;
+        bounds.y += height / 2;
+        DrawRectangleRec(bounds, temp);
+
+        bounds.x += width + gap;
+    }
+
+}
+
+static void drawPlotGraph(int values[PLOT_GRAPH_SIZE], int originX, int originY) {
+    // Draw axis
+    int radius = 5, gap = 50;
+    int axisYLength = 270, axisXLength = (radius + gap) * (PLOT_GRAPH_SIZE + PLOT_PADDING);
+    DrawLine(originX, originY, originX, originY - axisYLength - 10, TEXT_COLOR);
+    DrawLine(originX, originY, originX + axisXLength, originY, TEXT_COLOR);
+
+    // Draw y plots
+    DrawTextEx(gui.font, "100", (Vector2){originX - 30, originY - axisYLength - 5}, 20, 0, TEXT_COLOR);
+    DrawLine(originX, originY - axisYLength, originX - 4, originY - axisYLength, TEXT_COLOR);
+
+    int x_plot[PLOT_GRAPH_SIZE];
+    int j = 0;
+    int i = plot_idx;
+
+    do {
+        if (values[i] != -1) {
+            x_plot[j++] = (values[i] * axisYLength / 100);
+        }
+        i = (i + 1) % PLOT_GRAPH_SIZE;
+    } while(i != plot_idx);
+
+    // Draw x plots
+    char str[6];
+    int current_time = getClk() - j + 1;
+    for (int i = 0, xOffset = originX; i < (PLOT_GRAPH_SIZE + PLOT_PADDING); i++) {
+        // Draw time
+        sprintf(str, "%d", current_time);
+        DrawTextEx(gui.font, str, (Vector2){xOffset, originY + 10}, 20, 0, TEXT_COLOR);
+
+        current_time++;
+        xOffset += radius + gap;
+    }
+
+    // Draw Graph
+    Color temp = PRIMARY_COLOR;
+    for (int i = 0, xOffset = originX; i < j; i++) {
+        // Draw circle
+        if (i == j - 1) temp = ACCENT_COLOR;
+        DrawCircle(xOffset, originY - x_plot[i], radius, temp);
+
+        // Draw line
+        if (i < j - 1) {
+            DrawLine(xOffset, originY - x_plot[i], xOffset + radius + gap, originY - x_plot[i + 1], PRIMARY_COLOR);
+        }
+
+        xOffset += radius + gap;
+    }
+
+}
+
+static void drawPerformanceGraphs(fib_heap_t *custom_heap) {
+    DrawTextEx(gui.font, "Process Number", (Vector2){gui.SIDEBAR_WIDTH + 50, gui.NAV_HEIGHT + 80}, 20, 0, TEXT_COLOR);
+    drawGraph(processes_num, gui.SIDEBAR_WIDTH + 50, gui.NAV_HEIGHT + 400, 5);
+    DrawTextEx(gui.font, "CPU State", (Vector2){gui.SIDEBAR_WIDTH + 700, gui.NAV_HEIGHT + 80}, 20, 0, TEXT_COLOR);
+    drawGraph(cpu_state, gui.SIDEBAR_WIDTH + 700, gui.NAV_HEIGHT + 400, 1);
+    DrawTextEx(gui.font, "CPU Utilization", (Vector2){gui.SIDEBAR_WIDTH + 50, gui.NAV_HEIGHT + 460}, 20, 0, TEXT_COLOR);
+    drawPlotGraph(cpu_util, gui.SIDEBAR_WIDTH + 50, gui.HEIGHT - 80);
+}
+
 void clearPageResources(GUIPage *page)
 {
     if (!page)
