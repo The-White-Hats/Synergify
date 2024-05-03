@@ -144,7 +144,7 @@ int main(void)
     UnloadTexture(background);
 
     CloseWindow(); // Close window and OpenGL context
-
+    free(processes);
     return 0;
 }
 
