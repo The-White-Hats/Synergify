@@ -10,6 +10,7 @@
 
 gui_t gui;
 static void *processes;
+static queue_t *logs;
 
 //================================= SIGNAL HANDLERS =================================//
 //================================= INPUT HANDLERS ==================================//
@@ -19,6 +20,7 @@ static fib_heap_t *copyProcessesWithOrder(fib_heap_t *heap);
 static fib_heap_t *copyProcessesFromQueue(queue_t *queue);
 static int selectKey(void *data);
 static void updateData();
+static void updateMonitorData(PCB *current, PCB *prev, int time);
 //==================================== Draw GUI =====================================//
 static void drawProcessesWithOrder(fib_heap_t *custom_heap);
 static void drawProcess(PCB *custom_heap, int idx, int offsetY);
@@ -36,6 +38,8 @@ void initTaskManager(void *ready_queue)
     // Initialization
     //--------------------------------------------------------------------------------------
     processes = ready_queue;
+    logs = create_queue();
+
     gui.WIDTH = 1600;
     gui.SIDEBAR_WIDTH = 350;
     gui.HEIGHT = 900;
@@ -77,6 +81,7 @@ void initTaskManager(void *ready_queue)
 
     // De-Initialization
     clearPageResources(page);
+    queue_free(logs, 1);
     free(page);
     //--------------------------------------------------------------------------------------
     CloseWindow(); // Close window and OpenGL context
@@ -256,6 +261,9 @@ void drawPage(GUIPage *page)
     case PAGE_PERFORMANCE:
         drawPerformanceGraphs(custom_heap);
         break;
+    case PAGE_MONITOR:
+        drawMonitorLogs();
+        break;
     default:
         break;
     }
@@ -325,36 +333,85 @@ static void drawProcessesWithOrder(fib_heap_t *custom_heap)
     {
         drawProcess((PCB *)fib_heap_extract_min(custom_heap), i++, scrollY);
     }
-    scrollY += GetMouseWheelMove() * 20;
-    scrollY = Clamp(scrollY, 0, i * 70);
+    scrollY -= GetMouseWheelMove() * 20;
+    scrollY = Clamp(scrollY, 0, (i > 10 ? i - 10 : 0) * 70);
     EndScissorMode();
     fib_heap_free(custom_heap, 0);
 }
 
 static void updateData() {
     static int cpu_runtime = 0;
+    static PCB running_element = {.file_id = -1};
     int current_time = getClk();
     fib_heap_t *custom_heap = copyProcessesFromReadyQUeue();
 
     // Calculate performance
+    int prev_id = running_element.file_id;
     int num_of_processes = fib_heap_size(custom_heap);
-    bool idle = true;
+    PCB *curr_running_element = NULL;
     while (fib_heap_size(custom_heap) > 0)
     {
-        const PCB *element = fib_heap_extract_min(custom_heap);
-        if (element->state == RUNNING) idle = false;
+        const PCB *element = (PCB *)fib_heap_extract_min(custom_heap);
+        if (element->state == RUNNING) {
+            curr_running_element = element;
+        }
+        if (element->file_id == prev_id) prev_id == -2;
     }
-    cpu_runtime += (!idle ? 1 : 0);
+    cpu_runtime += (!curr_running_element ? 0 : 1);
 
     // Update graphs stats
     processes_num[graph_idx] = num_of_processes;
-    cpu_state[graph_idx] = (!idle ? 1 : 0);
+    cpu_state[graph_idx] = (!curr_running_element ? 0 : 1);
     cpu_util[plot_idx] = (current_time == 0 ? 0 : cpu_runtime * 100 / current_time);
     // Update indexes
     graph_idx = (graph_idx + 1) % GRAPH_SIZE;
     plot_idx = (plot_idx + 1) % PLOT_GRAPH_SIZE;
     
+    updateMonitorData(curr_running_element, &running_element, current_time);
+
     fib_heap_free(custom_heap, 0);
+}
+
+static void updateMonitorData(PCB *current, PCB *prev, int time) {
+    if (!current && prev->file_id == -1) return;
+
+    //  Time  File_id  State  Arrival  Runtime  Waiting_time  WTA
+    // A process terminated or paused
+    if ((!current || current->file_id != prev->file_id) && prev->file_id != -1) {
+        int *data = malloc(sizeof(int)*9);
+        data[0] = time;
+        data[1] = prev->file_id;
+        data[3] = prev->arrival;
+        data[4] = prev->runtime;
+        data[5] = prev->runtime - (time - prev->arrival - prev->waiting_time);
+        data[2] = (data[5] == 0 ? -1 : 0);
+        data[6] = prev->waiting_time;
+        int TA = time - prev->arrival;
+        data[7] = TA;
+        data[8] = (prev->runtime == 0 ? 0 : TA / prev->runtime);
+        enqueue(logs, (void *)data);
+    }
+
+    // A process resumed
+    if (current != NULL && current->file_id != prev->file_id) 
+    {
+        int *data = malloc(sizeof(int)*7);
+        data[0] = time;
+        data[1] = current->file_id;
+        data[3] = current->arrival;
+        data[4] = current->runtime;
+        data[5] = current->runtime - (time - current->arrival - current->waiting_time);
+        data[2] = 1;
+        if (current->arrival != current->last_stop_time)   data[2] = 2;
+        data[6] = current->waiting_time;
+        enqueue(logs, (void *)data);
+        
+        *prev = *current;
+    } 
+    else if (!current)
+    {
+        prev->file_id = -1;
+    }
 }
 
 static void drawGraph(int values[GRAPH_SIZE], int originX, int originY, int mx) {
@@ -463,12 +520,60 @@ static void drawPlotGraph(int values[PLOT_GRAPH_SIZE], int originX, int originY)
 }
 
 static void drawPerformanceGraphs(fib_heap_t *custom_heap) {
+    // Process Number Bar Graph
     DrawTextEx(gui.font, "Process Number", (Vector2){gui.SIDEBAR_WIDTH + 50, gui.NAV_HEIGHT + 80}, 20, 0, TEXT_COLOR);
     drawGraph(processes_num, gui.SIDEBAR_WIDTH + 50, gui.NAV_HEIGHT + 400, 5);
+
+    // CPU State Bar Graph
     DrawTextEx(gui.font, "CPU State", (Vector2){gui.SIDEBAR_WIDTH + 700, gui.NAV_HEIGHT + 80}, 20, 0, TEXT_COLOR);
     drawGraph(cpu_state, gui.SIDEBAR_WIDTH + 700, gui.NAV_HEIGHT + 400, 1);
+
+    // CPU Utilization Plot Graph
     DrawTextEx(gui.font, "CPU Utilization", (Vector2){gui.SIDEBAR_WIDTH + 50, gui.NAV_HEIGHT + 460}, 20, 0, TEXT_COLOR);
     drawPlotGraph(cpu_util, gui.SIDEBAR_WIDTH + 50, gui.HEIGHT - 80);
+}
+
+void drawMonitorLogs() {
+    queue_t *temp_queue = create_queue();
+
+    queue_copy(logs, temp_queue);
+
+    static int scrollY = 0;
+    int i = 1, gap = 60;
+    char str[255];
+    BeginScissorMode(gui.SIDEBAR_WIDTH, 110, gui.WIDTH - gui.SIDEBAR_WIDTH, gui.HEIGHT - 100);
+
+    while (!is_queue_empty(temp_queue)) {
+        int *data = (int *)dequeue(temp_queue);
+
+        switch (data[2]) {
+            case 1:
+                snprintf(str, sizeof(str), "%d:\t\tAt time %d process %d started arr %d total %d remain %d wait %d"
+                , i, data[0], data[1], data[3], data[4], data[5], data[6]);
+                break;
+            case 2:
+                snprintf(str, sizeof(str), "%d:\t\tAt time %d process %d resumed arr %d total %d remain %d wait %d"
+                , i, data[0], data[1], data[3], data[4], data[5], data[6]);
+                break;
+            case 0:
+                snprintf(str, sizeof(str), "%d:\t\tAt time %d process %d stopped arr %d total %d remain %d wait %d"
+                , i, data[0], data[1], data[3], data[4], data[5], data[6]);
+                break;
+            case -1:
+                snprintf(str, sizeof(str), "%d:\t\tAt time %d process %d terminated arr %d total %d remain %d wait %d TA %d WTA %d"
+                , i, data[0], data[1], data[3], data[4], data[5], data[6], data[7], data[8]);
+                break;
+            default:
+                break;
+        }
+
+        DrawTextEx(gui.font, str, (Vector2){gui.SIDEBAR_WIDTH + 10, 110 + (i - 1) * gap - scrollY}, 28, 0, TEXT_COLOR);
+        i++;
+    }
+    scrollY -= GetMouseWheelMove() * 20;
+    scrollY = Clamp(scrollY, 0, (i > 12 ? i - 12 : 0) * gap);
+    EndScissorMode();
+    queue_free(temp_queue, 0);
 }
 
 void clearPageResources(GUIPage *page)
