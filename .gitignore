@@ -10,3 +10,4 @@ processes.txt
 # log files
 *.log
 *.perf
+*.png

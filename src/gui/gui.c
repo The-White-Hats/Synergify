@@ -6,23 +6,7 @@
 
 #include <stdatomic.h> // C11 atomic data types
 
-#include <time.h>  // Required for: clock()
-#include <stdio.h> //if you don't use scanf/printf change this include
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/file.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
-#include <sys/sem.h>
-#include <sys/msg.h>
-#include <sys/wait.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <signal.h>
-#include <errno.h>
-#include <string.h>
-#include <stdarg.h>
-#include <pthread.h>
+#include <time.h> // Required for: clock()
 #include "../header.h"
 
 #define PATH_SIZE 256
@@ -54,6 +38,11 @@ static bool inputScreen();                                   // Input screen fun
 static int autoType(const char *text, int current_frame, int max_frame_count, int x, int y, int font_size, Color color);
 void run_process_generator();
 void read_input_file();
+void read_log_file();
+void get_cnt_of_log();
+void draw_line(int x, int y, int direction, int start_idx);
+void draw_image(int x, int y);
+void ouput_image(Texture2D background);
 // Global variables
 
 //----------------------------------------------- Screen variables--------------------------------------------------------
@@ -69,24 +58,44 @@ int algoChoice = 0;          // Variable to store user choice for algorithm
 const char *algoOptions = "Non-preemptive Highest Priority First;Shortest Remaining time Next;Round Robin";
 int quantum = 1; // Initial value
 int totalTime = 5;
-
+int number_of_logs = 0;
+int max_height = 0;
 char filePath[512] = {0}; // Buffer to store the file path
 
 //------------------------------------------------------------------------------------------------------------------------
 
+typedef struct process_block_s
+{
+    int time;
+    int id;
+    int arrival;
+    int runtime;
+    char status[20];
+    int remaining_time;
+    int waiting_time;
+    int TA;
+    float WTA;
+} process_block_t;
+
+process_block_t *processes;
+
+void draw_block(int x, int y, process_block_t process);
+
+#define BLOCK_WIDTH 150
+#define BLOCK_HEIGHT 100
+
 int main(void)
 {
-
+    SetConfigFlags(FLAG_MSAA_4X_HINT);
     InitWindow(screenWidth, screenHeight, "Process Scheduler Simulation");
     SetTargetFPS(60);
 
     char absolute_path[PATH_SIZE];
     getAbsolutePath(absolute_path, "assets/images/neon.png");
     Texture2D background = LoadTexture(absolute_path);
-
+    Vector2 offset = {0.0f, 0.0f};
     BeginDrawing();
     // Draw the background image
-
     DrawTexture(background, 0, 0, WHITE);
     ClearBackground(RAYWHITE);
     EndDrawing();
@@ -94,9 +103,12 @@ int main(void)
     WelcomeScreen();
 
     bool buttonPressed = false; // Flag to check if the button has been pressed
-    bool once = false;
+    bool once = true;
+
     while (!WindowShouldClose())
     {
+        int wheelMove = GetMouseWheelMove();
+        offset.y += wheelMove * 40.0f; // Adjust the multiplier as needed
 
         BeginDrawing();
         ClearBackground(RAYWHITE);
@@ -104,23 +116,35 @@ int main(void)
 
         if (!buttonPressed)
             buttonPressed = inputScreen();
+        else if (state != STATE_FINISHED)
+        {
+            if (once)
+            {
+                once = false;
+                read_input_file();
+                run_process_generator();
+            }
+            loadingBar();
+        }
         else
         {
             if (!once)
             {
-                read_input_file();
-                run_process_generator();
                 once = true;
+                get_cnt_of_log();
+                read_log_file();
             }
-            loadingBar();
+            BeginMode2D((Camera2D){.offset = offset, .target = (Vector2){0.0f, 0.0f}, .rotation = 0.0f, .zoom = 1.0f});
+            draw_image(50, 50);
+            EndMode2D();
         }
-
         EndDrawing();
     }
+    ouput_image(background);
     UnloadTexture(background);
 
     CloseWindow(); // Close window and OpenGL context
-
+    free(processes);
     return 0;
 }
 
@@ -161,9 +185,9 @@ static void WelcomeScreen()
     getAbsolutePath(dev_absolute_path[2], "assets/images/mo2.png");
     getAbsolutePath(dev_absolute_path[3], "assets/images/marwan.png");
     Texture2D developers[] = {LoadTexture(dev_absolute_path[0]),
-                            LoadTexture(dev_absolute_path[1]),
-                            LoadTexture(dev_absolute_path[2]),
-                            LoadTexture(dev_absolute_path[3])};
+                              LoadTexture(dev_absolute_path[1]),
+                              LoadTexture(dev_absolute_path[2]),
+                              LoadTexture(dev_absolute_path[3])};
     const char *welcomeText = "Welcome to";
     const char *projectName = "Synergify";
     const char *description[] = {"This is a Process Scheduler Simulation", "Enhance your understanding of the process scheduling algorithms", "Avialable algorithms: Non-preemptive Highest Priority First, Shortest Remaining time Next, Round Robin", "Task manager to track the progress of the processes", "Image Created at the end to show information about Processes", "Enjoy!"};
@@ -277,7 +301,7 @@ static void *LoadDataThread(void *arg)
 
         // We accumulate time over a global variable to be used in
         // main thread as a progress bar
-        atomic_store_explicit(&dataProgress, timeCounter / (2*totalTime), memory_order_relaxed);
+        atomic_store_explicit(&dataProgress, timeCounter / (2 * totalTime), memory_order_relaxed);
     }
 
     // When data has finished loading, we set global variable
@@ -354,17 +378,6 @@ static void loadingBar()
         }
     }
     break;
-    case STATE_FINISHED:
-    {
-        if (IsKeyPressed(KEY_ENTER))
-        {
-            // Reset everything to launch again
-            atomic_store_explicit(&dataLoaded, false, memory_order_relaxed);
-            atomic_store_explicit(&dataProgress, 0, memory_order_relaxed);
-            state = STATE_WAITING;
-        }
-    }
-    break;
     default:
         break;
     }
@@ -372,9 +385,6 @@ static void loadingBar()
     int loadingHeight = height + 50;
     switch (state)
     {
-    case STATE_WAITING:
-        // DrawText("PRESS ENTER to START LOADING DATA", 150, 170, 20, DARKGRAY);
-        break;
     case STATE_LOADING:
     {
         DrawRectangle(280, loadingHeight, atomic_load_explicit(&dataProgress, memory_order_relaxed), 60, SKYBLUE);
@@ -457,9 +467,8 @@ void read_input_file()
         printf("\nCould not open file processes.txt!!\n");
         exit(-1);
     }
-
-    char buffer[256];
     int cnt = 0;
+    char buffer[256];
     while (fgets(buffer, sizeof(buffer), input_file))
     {
         if (buffer[0] == '#')
@@ -469,6 +478,199 @@ void read_input_file()
         totalTime += runtime + ((cnt == 1) ? arrival : 0);
         cnt++;
     }
-    printf("Total Time: %d\n", totalTime);
+    printf("Total Time: %d \n", totalTime);
     fclose(input_file);
+}
+
+int is_file_empty(const char *filename) {
+    FILE *file = fopen(filename, "r");
+    if (file == NULL) {
+        printf("Failed to open file: %s\n", filename);
+        return 1; // Return -1 to indicate an error
+    }
+
+    fseek(file, 0, SEEK_END);
+    long size = ftell(file);
+    fclose(file);
+
+    return size == 0;
+}
+
+void get_cnt_of_log()
+{
+    while(is_file_empty("/home/marwan/mywork/Synergify/scheduler.perf"));
+    FILE *file = fopen("/home/marwan/mywork/Synergify/scheduler.log", "r");
+    if (file == NULL)
+    {
+        printf("Error opening file.\n");
+        exit(1);
+    }
+    char buffer[256];
+    while (number_of_logs == 0)
+    {
+        while (fgets(buffer, sizeof(buffer), file))
+        {
+            number_of_logs++;
+        }
+    }
+    fclose(file);
+}
+void read_log_file()
+{
+    FILE *file = fopen("/home/marwan/mywork/Synergify/scheduler.log", "r");
+    if (!file)
+    {
+        printf("Error opening file.\n");
+        exit(1);
+    }
+    int idx = 0;
+    processes = (process_block_t *)malloc(number_of_logs * sizeof(process_block_t));
+    process_block_t block;
+    char buffer[256];
+    char status_buffer[20]; // Temporary buffer for reading status
+    while (fgets(buffer, sizeof(buffer), file))
+    {
+        if (sscanf(buffer, "At time %d process %d %s arr %d total %d remain %d wait %d TA %d WTA %f",
+                   &block.time, &block.id, status_buffer, &block.arrival, &block.runtime, &block.remaining_time, &block.waiting_time, &block.TA, &block.WTA) == 9)
+        {
+            strcpy(block.status, status_buffer); // Copy status from temporary buffer
+        }
+        else
+        {
+            sscanf(buffer, "At time %d process %d %s arr %d total %d remain %d wait %d",
+                   &block.time, &block.id, status_buffer, &block.arrival, &block.runtime, &block.remaining_time, &block.waiting_time);
+            block.TA = 0;
+            block.WTA = 0.0f;
+            strcpy(block.status, status_buffer); // Copy status from temporary buffer
+        }
+        processes[idx++] = block;
+    }
+    fclose(file);
+}
+void draw_block(int x, int y, process_block_t process)
+{
+    int distance = 70;
+    Rectangle rec = {x, y, BLOCK_WIDTH, BLOCK_HEIGHT};
+    float roundness = 0.2f;
+    int segments = 5;
+    int separate = 90;
+    int space_after_line = 45;
+    int space_after_text = 15;
+    int text_size = 10;
+    Color text_color = VIOLET;
+    Color inside = CLITERAL(Color){167, 203, 254, 255};
+    Color border = CLITERAL(Color){4, 79, 206, 255};
+    Color main_text = CLITERAL(Color){97, 15, 108, 255};
+    Color time_color = CLITERAL(Color){251, 90, 255, 255};
+    Color Stopped = CLITERAL(Color){221, 98, 12, 255};
+    Color Resumed = CLITERAL(Color){180, 153, 8, 255};
+    Color status_color = strcmp(process.status, "started") == 0 ? DARKGREEN : strcmp(process.status, "finished") == 0 ? RED
+                                                                          : strcmp(process.status, "resumed") == 0    ? Resumed
+                                                                                                                      : Stopped;
+
+    DrawRectangleRounded(rec, roundness, segments, inside);
+    DrawRectangleRoundedLines(rec, roundness, segments, border);
+
+    DrawText(TextFormat("Time: %d", process.time), x + 10, y - 20, 15, time_color);
+
+    DrawText(TextFormat("Process %d", process.id), x + 10, y + 10, 15, main_text);
+    DrawLine(x, y + 30, x + BLOCK_WIDTH, y + 30, border);
+
+    DrawText(process.status, x + 100, y + 13, 10, status_color);
+
+    DrawText(TextFormat("Arrival: %d", process.arrival), x + 10, y + space_after_line, text_size, text_color);
+    DrawText(TextFormat("Total: %d", process.runtime), x + 10, y + space_after_line + space_after_text, text_size, text_color);
+    DrawText(TextFormat("Remaining: %d", process.remaining_time), x + 10, y + space_after_line + 2 * space_after_text, text_size, text_color);
+
+    DrawText(TextFormat("Waiting: %d", process.waiting_time), x + separate, y + space_after_line, text_size, text_color);
+    if (strcmp(process.status, "finished") == 0)
+    {
+        DrawText(TextFormat("TA: %d", process.TA), x + separate, y + space_after_line + space_after_text, text_size, text_color);
+        DrawText(TextFormat("WTA: %.2f", process.WTA), x + separate, y + space_after_line + 2 * space_after_text, text_size, text_color);
+    }
+}
+
+void DrawHorizontalArrow(Vector2 startPos, float length, float arrowSize, int direction, Color color)
+{
+    Vector2 endPos = {startPos.x + direction * length, startPos.y};
+
+    // Draw the horizontal line
+    DrawLineV(startPos, endPos, color);
+
+    // Draw the arrowhead
+    Vector2 arrow1 = {endPos.x - direction * arrowSize, endPos.y - direction * arrowSize / 2};
+    Vector2 arrow2 = {endPos.x - direction * arrowSize, endPos.y + direction * arrowSize / 2};
+    DrawTriangle(endPos, arrow1, arrow2, color);
+}
+
+void DrawVerticalArrow(Vector2 startPos, float length, float arrowSize, int direction, Color color)
+{
+    Vector2 endPos = {startPos.x, startPos.y + direction * length};
+
+    // Draw the vertical line
+    DrawLineV(startPos, endPos, color);
+
+    // Draw the arrowhead
+    Vector2 arrow1 = {endPos.x + direction * arrowSize / 2, endPos.y - direction * arrowSize};
+    Vector2 arrow2 = {endPos.x - direction * arrowSize / 2, endPos.y - direction * arrowSize};
+    DrawTriangle(endPos, arrow1, arrow2, color);
+}
+
+void draw_line(int x, int y, int direction, int start_idx) // 1 to right -1 to left
+{
+    Color color = CLITERAL(Color){121, 171, 255, 255};
+    Vector2 verticalStartPos = {200, 100};
+    float lineLength = 50;
+    float arrowSize = 10;
+    for (int i = 0; i < 5; i++)
+    {
+        draw_block(x + direction * (i * 200 + ((direction == -1) ? BLOCK_WIDTH : 0)), y, processes[start_idx++]);
+        if (start_idx >= number_of_logs)
+            break;
+
+        if (i < 4)
+        {
+            Vector2 startPos = {x + direction * (i * 200 + BLOCK_WIDTH), y + BLOCK_HEIGHT / 2};
+            DrawHorizontalArrow(startPos, lineLength, arrowSize, direction, color);
+        }
+        else
+        {
+            Vector2 startPos = {x + direction * (i * 200 + BLOCK_WIDTH / 2), y + BLOCK_HEIGHT};
+            DrawVerticalArrow(startPos, lineLength, arrowSize, 1, color);
+        }
+    }
+}
+
+void draw_image(int x, int y)
+{
+    int direction = 1;
+    int start_x = x;
+    for (int i = 0; i < number_of_logs; i += 5)
+    {
+        if (direction == 1)
+            x = start_x;
+        else
+            x = screenWidth - start_x - 17;
+        draw_line(x, y, direction, i);
+        y += BLOCK_HEIGHT + 50;
+        direction *= -1;
+    }
+    max_height = y;
+}
+
+void ouput_image(Texture2D background)
+{
+    int idx = 1;
+    Vector2 offset = {0.0f, 0.0f};
+    for (; offset.y > -1 * max_height; offset.y -= (screenHeight))
+    {
+        BeginDrawing();
+        ClearBackground(RAYWHITE);
+        DrawTexture(background, 0, 0, WHITE);
+        BeginMode2D((Camera2D){.offset = offset, .target = (Vector2){0.0f, 0.0f}, .rotation = 0.0f, .zoom = 1.0f});
+        draw_image(50, 50);
+        EndMode2D();
+        EndDrawing();
+        TakeScreenshot(TextFormat("Scheduler_log_%d.png", idx++));
+    }
 }
