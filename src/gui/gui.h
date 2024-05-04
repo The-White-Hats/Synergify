@@ -13,9 +13,9 @@
 
 typedef enum {
   PAGE_WELCOME,
-  PAGE_SIMULATION,
   PAGE_PROCESSES,
   PAGE_PERFORMANCE,
+  PAGE_MONITOR,
   PAGE_OUTPUT,
   PAGE_COUNT
 } PAGE;
@@ -80,6 +80,8 @@ void initTaskManager(void *ready_queue);
 void initProcessesPage(GUIPage *page);
 
 void initPerformancePage(GUIPage *page);
+
+void initMonitorPage(GUIPage *page);
 
 void clearPageResources(GUIPage *page);
 

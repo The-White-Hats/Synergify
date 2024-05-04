@@ -8,7 +8,7 @@ static void initSidebar(GUIPage *page, int *offset) {
   Rectangle bounds = { 10, 100, gui.SIDEBAR_WIDTH - 20, 70 };
   int gap = 20;
   const char *text[] = {"Processes", "Performance", "Monitor"};
-  void (*ptrInitPages[])(GUIPage *) = {initProcessesPage, initPerformancePage, initPerformancePage};
+  void (*ptrInitPages[])(GUIPage *) = {initProcessesPage, initPerformancePage, initMonitorPage};
 
   // Initialize each GUI element
   // Initialize the background
@@ -194,4 +194,23 @@ void initPerformancePage(GUIPage *page) {
   // 2. Create Main
   initHeader(page, &idx, "Performance");
 
+}
+
+void initMonitorPage(GUIPage *page) {
+  if (page->pageType == PAGE_MONITOR) return;
+  int idx = 0;
+  clearPageResources(page);
+  page->pageType = PAGE_MONITOR;
+  page->num_of_elements = SIDEBAR_ELEMENTS + HEADER_ELEMENTS + 0;
+
+  page->elements = malloc(sizeof(GUIElement)*page->num_of_elements);
+
+  // Initialize each GUI element
+  // 1. Create Sidebar
+  initSidebar(page, &idx);
+  page->elements[3].color = SECONDARY_COLOR;
+
+  // 2. Create Main    return;
+
+  initHeader(page, &idx, "Monitor");
 }
