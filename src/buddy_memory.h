@@ -5,6 +5,8 @@
 #include <stdint.h>
 
 #define MAX_SIZE 1024
+#define true 1
+#define false 0
 
 typedef short bool;
 
@@ -76,3 +78,9 @@ bool free_memory(void *block, buddy_tree_t *buddy_tree);
  * @buddy_tree: pointer to the tree.
  */
 void print_tree(buddy_tree_t *buddy_tree);
+
+/**
+ * create_buddy_tree - creates the buddy tree, initializes and returns it.
+ * @return pointer to the buddy tree.
+ */
+buddy_tree_t *create_buddy_tree();
