@@ -40,17 +40,16 @@ int selectedAlgorithmIndex;
 void (*scheduleFunction[])(void *) = {scheduleHPF, scheduleSRTN, scheduleRR};
 
 //====================== GLOBAL VARIABLES (log file related) =======================//
-float total_waiting_time = 0;                   // sum of waiting times
-float total_weighted_turnaround_time = 0;       // sum of weighted turnaround times
-float total_running_time = 0;                   // sum of running times
-float *wta_values = NULL;                       // array of weighted turnaround times
-int total_processes = 0;                        // total number of processes that come so far
-int idx = 0;                                    // index of the wta_values array
-int waste_time = 0;                             // cpu wasted time
+float total_waiting_time = 0;             // sum of waiting times
+float total_weighted_turnaround_time = 0; // sum of weighted turnaround times
+float total_running_time = 0;             // sum of running times
+float *wta_values = NULL;                 // array of weighted turnaround times
+int total_processes = 0;                  // total number of processes that come so far
+int idx = 0;                              // index of the wta_values array
+int waste_time = 0;                       // cpu wasted time
 FILE *logFile, *perfFile;
 const char *const SCHEDULER_LOG_NAME = "scheduler.log";
 const char *const SCHEDULER_PERF_NAME = "scheduler.perf";
-
 
 int main(int argc, char *argv[])
 {
@@ -110,12 +109,12 @@ int main(int argc, char *argv[])
         int curr_time = getClk();
         float curr_time_float = getClkFloat();
         generateProcesses();
-        
+
         if (curr_time_float - prev_time_float == 1)
         {
             PCB *front_process = getRunningProcess(schedulerConfig->selected_algorithm);
 
-            if (((running_process != NULL) != (front_process != NULL)) || 
+            if (((running_process != NULL) != (front_process != NULL)) ||
                 (running_process && running_process->fork_id != front_process->fork_id))
             {
                 contentSwitch(front_process, running_process, getClk(), logFile);
@@ -146,11 +145,12 @@ int main(int argc, char *argv[])
     fflush(perfFile);
 
     // Join the gui thread
-    if (pthread_join(gui_thread, NULL) != 0) {
+    if (pthread_join(gui_thread, NULL) != 0)
+    {
         perror("Error joining thread");
         exit(EXIT_FAILURE);
     }
-    
+
     clearResources(0);
 
     // Upon termination release the clock resources.
@@ -213,12 +213,12 @@ static void terminateRunningProcess(int signum)
         exit(EXIT_FAILURE);
     }
 
-    wta_values[idx] =  (process->runtime == 0)? 0 : (float)(getClk() - process->arrival) / process->runtime;
+    wta_values[idx] = (process->runtime == 0) ? 0 : (float)(getClk() - process->arrival) / process->runtime;
 
     total_waiting_time += process->waiting_time;
     total_weighted_turnaround_time += wta_values[idx++];
     total_running_time += process->runtime;
-    float WTA =  (running_process->runtime == 0)? 0 :(float)(getClk() - running_process->arrival) / running_process->runtime;
+    float WTA = (running_process->runtime == 0) ? 0 : (float)(getClk() - running_process->arrival) / running_process->runtime;
     addFinishLog(logFile,
                  getClk(),
                  running_process->file_id,
@@ -227,7 +227,7 @@ static void terminateRunningProcess(int signum)
                  running_process->runtime,
                  running_process->waiting_time,
                  getClk() - running_process->arrival,
-                WTA);
+                 WTA);
 
     free(running_process);
 
@@ -446,9 +446,11 @@ SchedulerConfig *getSchedulerConfigInstance()
 
 //====================================== GUI ========================================//
 
-void createTaskManager(pthread_t *gui_thread) {
+void createTaskManager(pthread_t *gui_thread)
+{
     int result = pthread_create(gui_thread, NULL, initTaskManager, ready_queue);
-    if (result != 0) {
+    if (result != 0)
+    {
         perror("GUI Thread Failed");
         exit(EXIT_FAILURE);
     }
