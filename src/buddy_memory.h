@@ -63,7 +63,7 @@ uint8_t convert_size_to_order(int memory_size);
  * @return pointer to the buddy block that contains the allocated memory,
  * or to null if it failed.
  */
-void *allocate_memory(int memory_size, buddy_tree_t *buddy_tree);
+buddy_node_t *allocate_memory(int memory_size, buddy_tree_t *buddy_tree);
 
 /**
  * free_memory - takes a ptr to a buddy block and free it from the system.
@@ -84,3 +84,25 @@ void print_tree(buddy_tree_t *buddy_tree);
  * @return pointer to the buddy tree.
  */
 buddy_tree_t *create_buddy_tree();
+
+/**
+ * create_buddy_node - takes an order value and creates and initializes a new node.
+ * @order: it's order.
+ * @return the created node.
+ */
+buddy_node_t *create_buddy_node(uint8_t order);
+
+/**
+ * insert_buddy_node - takes a node (starting from root) and an order value
+ * and recursively insert a new node into the buddy_tree in it's approprate order value.
+ * @node: the node from which we would start (the root).
+ * @order: the order value.
+ * @return a pointer to the allocated buddy_node.
+ */
+buddy_node_t *insert_buddy_node(buddy_node_t *node, uint8_t order);
+
+/**
+ * create_children - takes a node and creates and initilizes its 2 children nodes.
+ * @node: pointer to the parent node.
+ */
+void create_children(buddy_node_t *node);
