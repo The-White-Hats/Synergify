@@ -25,6 +25,7 @@ typedef struct buddy_node_s
   void *allocated_memory;
   uint8_t order;
   bool is_free;
+  int i, j;
 
 } buddy_node_t;
 
@@ -86,7 +87,7 @@ buddy_tree_t *create_buddy_tree();
  * @param order: it's order.
  * @return the created node.
  */
-buddy_node_t *create_buddy_node(uint8_t order);
+buddy_node_t *create_buddy_node(uint8_t order, int i, int j);
 
 /**
  * insert_buddy_node - takes a node (starting from root) and an order value
@@ -101,7 +102,7 @@ buddy_node_t *insert_buddy_node(buddy_node_t *node, uint8_t order);
  * create_children - takes a node and creates and initilizes its 2 children nodes.
  * @param node: pointer to the parent node.
  */
-void create_children(buddy_node_t *node);
+void create_children(buddy_node_t *node, int i, int j);
 
 /**
  * buddy_free - Frees all memory allocated for the queue elements

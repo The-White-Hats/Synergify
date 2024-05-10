@@ -52,9 +52,11 @@ float *wta_values = NULL;                 // array of weighted turnaround times
 int total_processes = 0;                  // total number of processes that come so far
 int idx = 0;                              // index of the wta_values array
 int waste_time = 0;                       // cpu wasted time
-FILE *logFile, *perfFile;
+FILE *logFile, *perfFile, *memoryLog;
+
 const char *const SCHEDULER_LOG_NAME = "scheduler.log";
 const char *const SCHEDULER_PERF_NAME = "scheduler.perf";
+const char *const MEMORY_LOG_NAME = "memory.log";
 
 int main(int argc, char *argv[])
 {
@@ -67,6 +69,7 @@ int main(int argc, char *argv[])
     /* Open output files */
     logFile = fopen(SCHEDULER_LOG_NAME, "w");
     perfFile = fopen(SCHEDULER_PERF_NAME, "w");
+    memoryLog = fopen(MEMORY_LOG_NAME, "w");
 
     if (logFile == NULL)
     {
@@ -76,6 +79,11 @@ int main(int argc, char *argv[])
     if (perfFile == NULL)
     {
         printf("Error opening %s!\n", SCHEDULER_PERF_NAME);
+        return 1;
+    }
+    if (memoryLog == NULL)
+    {
+        printf("Error opening %s!\n", MEMORY_LOG_NAME);
         return 1;
     }
 
@@ -150,6 +158,7 @@ int main(int argc, char *argv[])
     addPerf(perfFile);
     fflush(logFile);
     fflush(perfFile);
+    fflush(memoryLog);
 
     // Join the gui thread
     if (pthread_join(gui_thread, NULL) != 0)
@@ -290,6 +299,7 @@ static void clearResources(int signum)
     // Close opened files
     fclose(logFile);
     fclose(perfFile);
+    fclose(memoryLog);
 
     killpg(getgid(), SIGINT);
 }
@@ -427,10 +437,11 @@ static void generateProcesses()
 static void addToStateQueue(PCB *process)
 {
     total_processes++;
-    buddy_node_t* buddy_node = allocate_memory(process->memsize, buddy_system_tree);
-    
-    if (buddy_node == NULL) return addToBlockQueue(process);
-    
+    buddy_node_t *buddy_node = allocate_memory(process->memsize, buddy_system_tree);
+
+    if (buddy_node == NULL)
+        return addToBlockQueue(process);
+
     process->ptr_mem = (void *)buddy_node;
     addToReadyQueue(process);
 }
@@ -476,7 +487,8 @@ static void checkBlockQueue(int freed_memsize)
     queue_node_t *dummy, *parent, *delete, *iterator;
     bool isHead;
 
-    if (is_queue_empty(block_queue))    return;
+    if (is_queue_empty(block_queue))
+        return;
 
     iterator = block_queue->head;
     dummy = malloc(sizeof(queue_node_t));
@@ -487,10 +499,12 @@ static void checkBlockQueue(int freed_memsize)
     {
         PCB *process = (PCB *)iterator->data;
         int memsize = process->memsize;
-        if (freed_memsize >= memsize) {
+        if (freed_memsize >= memsize)
+        {
             // Try to allocate memory
             process->ptr_mem = (void *)allocate_memory(memsize, buddy_system_tree);
-            if (process->ptr_mem == NULL) {
+            if (process->ptr_mem == NULL)
+            {
                 perror("freed block in buddy tree\n");
                 return;
             }
@@ -502,10 +516,12 @@ static void checkBlockQueue(int freed_memsize)
             freed_memsize -= pow(2, ceil(log2(memsize)));
             isHead = (iterator == block_queue->head);
             iterator = iterator->next;
-            if (isHead) {
+            if (isHead)
+            {
                 printf("Blocked process is head!\n");
                 block_queue->head = iterator;
-                if (!iterator) block_queue->tail = NULL;
+                if (!iterator)
+                    block_queue->tail = NULL;
                 queue_print(block_queue);
             }
             free(parent->next);
@@ -548,6 +564,16 @@ void createTaskManager(pthread_t *gui_thread)
 }
 
 //==================================== LOG DATA =====================================//
+
+void addToMemoryLog(FILE *memoryLog, int time, int bytes, int id, int i, int j, bool isAllocated)
+{
+
+    if (isAllocated)
+        fprintf(memoryLog, "At time %d allocated %d bytes for process %d from %d to %d\n", time, bytes, id, i, j);
+
+    else
+        fprintf(memoryLog, "At time %d freed %d bytes for process %d from %d to %d\n", time, bytes, id, i, j);
+}
 
 /**
  * calculate_std_wta - Calculates the standard deviation of weighted turnaround time (WTA)
@@ -606,19 +632,19 @@ static void addFinishLog(FILE *file, int currentTime, int processId,
             currentTime, processId, state, arrivalTime, totalRuntime, 0, waitingTime, TA, WTA);
 }
 
-
 void queue_print(queue_t *my_queue)
 {
-	if (!my_queue->head) return;
+    if (!my_queue->head)
+        return;
 
-	queue_node_t *temp = my_queue->head;
-	while (temp)
-	{
+    queue_node_t *temp = my_queue->head;
+    while (temp)
+    {
         PCB *process = temp->data;
-		printf("(%d)", process->file_id);
-		temp = temp->next;
+        printf("(%d)", process->file_id);
+        temp = temp->next;
         if (temp)
             printf("->");
-	}
+    }
     printf("\n");
 }

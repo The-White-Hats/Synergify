@@ -84,12 +84,12 @@ buddy_tree_t *create_buddy_tree()
   buddy_tree_t *buddy_tree = (buddy_tree_t *)malloc(sizeof(buddy_tree_t));
 
   buddy_tree->max_memory_size = MAX_SIZE;
-  buddy_tree->root = create_buddy_node(convert_size_to_order(MAX_SIZE));
+  buddy_tree->root = create_buddy_node(convert_size_to_order(MAX_SIZE), 0, MAX_SIZE);
 
   return buddy_tree;
 }
 
-buddy_node_t *create_buddy_node(uint8_t order)
+buddy_node_t *create_buddy_node(uint8_t order, int i, int j)
 {
   buddy_node_t *node = (buddy_node_t *)malloc(sizeof(buddy_node_t));
 
@@ -99,14 +99,16 @@ buddy_node_t *create_buddy_node(uint8_t order)
   node->allocated_memory = NULL;
   node->order = order;
   node->is_free = true;
+  node->i = i;
+  node->j = j;
 
   return node;
 }
 
-void create_children(buddy_node_t *node)
+void create_children(buddy_node_t *node, int i, int j)
 {
-  node->left = create_buddy_node(node->order - 1);
-  node->right = create_buddy_node(node->order - 1);
+  node->left = create_buddy_node(node->order - 1, i, j / 2 - 1);
+  node->right = create_buddy_node(node->order - 1, j / 2, j);
   node->left->parent = node;
   node->right->parent = node;
   node->is_free = false;
@@ -130,7 +132,7 @@ buddy_node_t *insert_buddy_node(buddy_node_t *node, uint8_t order)
     if (!node->is_free) // Occupied node
       return NULL;
 
-    create_children(node);
+    create_children(node, node->i, node->j);
   }
 
   buddy_node_t *target_node = NULL;
@@ -157,7 +159,8 @@ void print_tree(buddy_node_t *root, int level)
 
 static void buddy_tree_free(buddy_node_t *root, bool deleteData)
 {
-  if (root == NULL) return;
+  if (root == NULL)
+    return;
   buddy_tree_free(root->left, deleteData);
   buddy_tree_free(root->right, deleteData);
 
@@ -172,7 +175,8 @@ static void buddy_tree_free(buddy_node_t *root, bool deleteData)
  */
 void buddy_free(buddy_tree_t *buddy_tree, bool deleteData)
 {
-  if (buddy_tree == NULL) return;
+  if (buddy_tree == NULL)
+    return;
   buddy_tree_free(buddy_tree->root, deleteData);
   free(buddy_tree);
 }
