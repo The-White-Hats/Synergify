@@ -2,7 +2,7 @@
 # Always start the line with a tab in Makefile, it is its syntax
 
 process_generator_deps = ./src/ds/queue.c ./src/utils.c
-scheduler_deps = ./src/scheduling_algorithms.c ./src/ds/queue.c ./src/ds/fib_heap.c ./src/utils.c ./src/gui/task_manager.c ./src/gui/page_init.c
+scheduler_deps = ./src/scheduling_algorithms.c ./src/buddy_memory.c ./src/ds/queue.c ./src/ds/fib_heap.c ./src/utils.c ./src/gui/task_manager.c ./src/gui/page_init.c
 
 build:
 	cc ./src/gui/gui.c ./src/utils.c -lraylib -lGL -lm -lpthread -ldl -lrt -lX11 -o ./bin/synergify.out
