@@ -22,7 +22,7 @@ static void generateProcesses();
 static void addToStateQueue(PCB *process);
 static void addToBlockQueue(PCB *process);
 static void addToReadyQueue(PCB *process);
-static void checkBlockQueue(int freed_memsize);
+static void checkBlockQueue();
 SchedulerConfig *getSchedulerConfigInstance();
 
 //====================================== GUI ========================================//
@@ -49,6 +49,7 @@ float total_waiting_time = 0;             // sum of waiting times
 float total_weighted_turnaround_time = 0; // sum of weighted turnaround times
 float total_running_time = 0;             // sum of running times
 float *wta_values = NULL;                 // array of weighted turnaround times
+int free_mem = 1024;
 int total_processes = 0;                  // total number of processes that come so far
 int idx = 0;                              // index of the wta_values array
 int waste_time = 0;                       // cpu wasted time
@@ -240,12 +241,12 @@ static void terminateRunningProcess(int signum)
                  WTA);
 
     // TODO: Free allocate memory for the process from the buddy system.
-    int freed_memsize = running_process->memsize;
+    free_mem += sizeof(((buddy_node_t *)(running_process->ptr_mem))->allocated_memory);
     free_memory((buddy_node_t *)running_process->ptr_mem);
     free(running_process);
 
     running_process = NULL;
-    checkBlockQueue(freed_memsize);
+    checkBlockQueue();
 
     printf("block:\n");
     queue_print(block_queue);
@@ -431,6 +432,7 @@ static void addToStateQueue(PCB *process)
     
     if (buddy_node == NULL) return addToBlockQueue(process);
     
+    free_mem -= sizeof(buddy_node->allocated_memory);
     process->ptr_mem = (void *)buddy_node;
     addToReadyQueue(process);
 }
@@ -469,7 +471,7 @@ static void addToReadyQueue(PCB *process)
     }
 }
 
-static void checkBlockQueue(int freed_memsize)
+static void checkBlockQueue()
 {
     printf("before:\n");
     queue_print(block_queue);
@@ -483,11 +485,11 @@ static void checkBlockQueue(int freed_memsize)
     parent = dummy;
     parent->next = iterator;
 
-    while (freed_memsize && iterator)
+    while (free_mem && iterator)
     {
         PCB *process = (PCB *)iterator->data;
         int memsize = process->memsize;
-        if (freed_memsize >= memsize) {
+        if (free_mem >= memsize) {
             // Try to allocate memory
             process->ptr_mem = (void *)allocate_memory(memsize, buddy_system_tree);
             if (process->ptr_mem == NULL) {
@@ -499,7 +501,7 @@ static void checkBlockQueue(int freed_memsize)
             addToReadyQueue(process);
 
             // Remove allocated block size from the free memory
-            freed_memsize -= pow(2, ceil(log2(memsize)));
+            free_mem -= pow(2, ceil(log2(memsize)));
             isHead = (iterator == block_queue->head);
             iterator = iterator->next;
             if (isHead) {
