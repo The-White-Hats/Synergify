@@ -34,6 +34,7 @@ static void addPerf(FILE *file);
 static void addFinishLog(FILE *file, int currentTime, int processId,
                          char *state, int arrivalTime, int totalRuntime,
                          int waitingTime, int TA, float WTA);
+static void addToMemoryLog(FILE *memoryLog, int time, int bytes, int id, int i, int j, bool isAllocated);
 
 //====================== GLOBAL VARIABLES (scheduelr related) =======================//
 void *ready_queue = NULL;
@@ -50,9 +51,9 @@ float total_weighted_turnaround_time = 0; // sum of weighted turnaround times
 float total_running_time = 0;             // sum of running times
 float *wta_values = NULL;                 // array of weighted turnaround times
 int free_mem = 1024;
-int total_processes = 0;                  // total number of processes that come so far
-int idx = 0;                              // index of the wta_values array
-int waste_time = 0;                       // cpu wasted time
+int total_processes = 0; // total number of processes that come so far
+int idx = 0;             // index of the wta_values array
+int waste_time = 0;      // cpu wasted time
 FILE *logFile, *perfFile, *memoryLog;
 
 const char *const SCHEDULER_LOG_NAME = "scheduler.log";
@@ -250,8 +251,11 @@ static void terminateRunningProcess(int signum)
                  WTA);
 
     // TODO: Free allocate memory for the process from the buddy system.
-    free_mem += sizeof(((buddy_node_t *)(running_process->ptr_mem))->allocated_memory);
-    free_memory((buddy_node_t *)running_process->ptr_mem);
+    buddy_node_t *buddy_node = (buddy_node_t *)running_process->ptr_mem;
+    free_mem += pow(2, ceil(log2(process->memsize)));
+    printf("free_mem: %d\n", free_mem);
+    addToMemoryLog(memoryLog, getClk(), process->memsize, process->file_id, buddy_node->i, buddy_node->j, false);
+    free_memory(buddy_node);
     free(running_process);
 
     running_process = NULL;
@@ -438,11 +442,15 @@ static void generateProcesses()
 static void addToStateQueue(PCB *process)
 {
     total_processes++;
-    buddy_node_t* buddy_node = allocate_memory(process->memsize, buddy_system_tree);
-    
-    if (buddy_node == NULL) return addToBlockQueue(process);
-    
-    free_mem -= sizeof(buddy_node->allocated_memory);
+    buddy_node_t *buddy_node = allocate_memory(process->memsize, buddy_system_tree);
+
+    if (buddy_node == NULL)
+        return addToBlockQueue(process);
+
+    addToMemoryLog(memoryLog, getClk(), process->memsize, process->file_id, buddy_node->i, buddy_node->j, true);
+
+    free_mem -= pow(2, ceil(log2(process->memsize)));
+    printf("free_mem2: %d\n", free_mem);
     process->ptr_mem = (void *)buddy_node;
     addToReadyQueue(process);
 }
@@ -500,14 +508,18 @@ static void checkBlockQueue()
     {
         PCB *process = (PCB *)iterator->data;
         int memsize = process->memsize;
-        if (free_mem >= memsize) {
+        if (free_mem >= memsize)
+        {
             // Try to allocate memory
-            process->ptr_mem = (void *)allocate_memory(memsize, buddy_system_tree);
+            buddy_node_t *buddy_node = allocate_memory(memsize, buddy_system_tree);
+            process->ptr_mem = (void *)buddy_node;
             if (process->ptr_mem == NULL)
             {
                 perror("freed block in buddy tree\n");
                 return;
             }
+
+            addToMemoryLog(memoryLog, getClk(), process->memsize, process->file_id, buddy_node->i, buddy_node->j, true);
 
             process->state = NEWBIE;
             addToReadyQueue(process);
@@ -565,7 +577,7 @@ void createTaskManager(pthread_t *gui_thread)
 
 //==================================== LOG DATA =====================================//
 
-void addToMemoryLog(FILE *memoryLog, int time, int bytes, int id, int i, int j, bool isAllocated)
+static void addToMemoryLog(FILE *memoryLog, int time, int bytes, int id, int i, int j, bool isAllocated)
 {
 
     if (isAllocated)
