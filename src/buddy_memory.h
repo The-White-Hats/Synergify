@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <math.h>
 
 #define MAX_SIZE 1024
 #define true 1
@@ -68,16 +69,14 @@ buddy_node_t *allocate_memory(int memory_size, buddy_tree_t *buddy_tree);
 /**
  * free_memory - takes a ptr to a buddy block and free it from the system.
  * @block: pointer to the buddy block.
- * @buddy_tree: pointer to the buddy tree from which we would free the node.
- * @return a boolean indicating if it was freed or not.
  */
-bool free_memory(void *block, buddy_tree_t *buddy_tree);
+void free_memory(buddy_node_t *block);
 
 /**
  * print_tree - takes a pointer to the tree and prints the tree.
  * @buddy_tree: pointer to the tree.
  */
-void print_tree(buddy_tree_t *buddy_tree);
+void print_tree(buddy_node_t *root, int level);
 
 /**
  * create_buddy_tree - creates the buddy tree, initializes and returns it.
