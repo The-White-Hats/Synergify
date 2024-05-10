@@ -181,6 +181,7 @@ static void initializeProcesses(int signum)
         process->priority = msgbuf.message.priority;
         process->start_time = -1;
         process->waiting_time = 0;
+        // TODO: allocate a new memory with size msgbuf.message.memsize and assign it to the process
 
         enqueue(queue, (void *)process);
     }
@@ -229,6 +230,7 @@ static void terminateRunningProcess(int signum)
                  getClk() - running_process->arrival,
                  WTA);
 
+    // TODO: Free allocate memory for the process from the buddy system.
     free(running_process);
 
     running_process = NULL;

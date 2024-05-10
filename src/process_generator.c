@@ -83,7 +83,8 @@ int main(int argc, char *argv[]) // algorithm, quantum, file_path
             kill(scheduler_id, SIGUSR1);
     }
 
-    free(processes_queue);killpg(getgid(), SIGKILL);
+    free(processes_queue);
+    killpg(getgid(), SIGKILL);
 
     kill(scheduler_id, SIGUSR2);
     pause();
@@ -122,8 +123,8 @@ void read_input_file(queue_t *processes_queue, char *file_path)
         if (buffer[0] == '#')
             continue;
         process_info_t *process = malloc(sizeof(process_info_t));
-        sscanf(buffer, "%d %d %d %d", &(process->id),
-               &(process->arrival), &(process->runtime), &(process->priority));
+        sscanf(buffer, "%d %d %d %d %d", &(process->id),
+               &(process->arrival), &(process->runtime), &(process->priority), &(process->memsize));
         enqueue(processes_queue, (void *)process);
     }
     fclose(input_file);
