@@ -77,8 +77,17 @@ typedef struct process_block_s
     float WTA;
 } process_block_t;
 
-process_block_t *processes;
+typedef struct statistics_s
+{
+    float cpu_utilization;
+    float avg_wta;
+    float avg_wt;
+    float std_wta;
+} statistics_t;
 
+process_block_t *processes;
+statistics_t *cpu_info;
+bool draw_statistical_data(statistics_t *cpu_info);
 void draw_block(int x, int y, process_block_t process);
 
 #define BLOCK_WIDTH 150
@@ -104,6 +113,7 @@ int main(void)
 
     bool buttonPressed = false; // Flag to check if the button has been pressed
     bool once = true;
+    bool gotoLogScreen = false;
 
     while (!WindowShouldClose())
     {
@@ -126,7 +136,7 @@ int main(void)
             }
             loadingBar();
         }
-        else
+        else if (!gotoLogScreen)
         {
             if (!once)
             {
@@ -134,6 +144,10 @@ int main(void)
                 get_cnt_of_log();
                 read_log_file();
             }
+            gotoLogScreen = draw_statistical_data(cpu_info);
+        }
+        else
+        {
             BeginMode2D((Camera2D){.offset = offset, .target = (Vector2){0.0f, 0.0f}, .rotation = 0.0f, .zoom = 1.0f});
             draw_image(50, 50);
             EndMode2D();
@@ -145,6 +159,7 @@ int main(void)
 
     CloseWindow(); // Close window and OpenGL context
     free(processes);
+    free(cpu_info);
     return 0;
 }
 
@@ -482,9 +497,11 @@ void read_input_file()
     fclose(input_file);
 }
 
-int is_file_empty(const char *filename) {
+int is_file_empty(const char *filename)
+{
     FILE *file = fopen(filename, "r");
-    if (file == NULL) {
+    if (file == NULL)
+    {
         printf("Failed to open file: %s\n", filename);
         return 1; // Return -1 to indicate an error
     }
@@ -502,8 +519,9 @@ void get_cnt_of_log()
     getProjectPath(absolute_path_perf, "scheduler.perf");
     getProjectPath(absolute_path_log, "scheduler.log");
 
-    while(is_file_empty(absolute_path_perf));
+    while (is_file_empty(absolute_path_perf));
     FILE *file = fopen(absolute_path_log, "r");
+
     if (file == NULL)
     {
         printf("Error opening file.\n");
@@ -553,6 +571,24 @@ void read_log_file()
         processes[idx++] = block;
     }
     fclose(file);
+
+    getProjectPath(absolute_path_log, "scheduler.perf");
+    file = fopen(absolute_path_log, "r");
+    if (!file)
+    {
+        printf("Error opening file.\n");
+        exit(1);
+    }
+    idx = 0;
+    cpu_info = (statistics_t *)malloc(sizeof(statistics_t));
+    fscanf(file, "CPU utilization = %f%%\nAvg WTA = %f\nAvg Waiting = %f\nSTD WTA = %f",
+           &cpu_info->cpu_utilization, &cpu_info->avg_wta, &cpu_info->avg_wt, &cpu_info->std_wta);
+    fclose(file);
+
+    printf("CPU Utilization: %.2f%%\n", cpu_info->cpu_utilization);
+    printf("Avg WTA: %.2f\n", cpu_info->avg_wta);
+    printf("Avg Waiting: %.2f\n", cpu_info->avg_wt);
+    printf("STD WTA: %.2f\n", cpu_info->std_wta);
 }
 void draw_block(int x, int y, process_block_t process)
 {
@@ -680,4 +716,40 @@ void ouput_image(Texture2D background)
         EndDrawing();
         TakeScreenshot(TextFormat("Scheduler_log_%d.png", idx++));
     }
+    BeginDrawing();
+    ClearBackground(RAYWHITE);
+    DrawTexture(background, 0, 0, WHITE);
+    draw_statistical_data(cpu_info);
+    EndDrawing();
+    TakeScreenshot("Scheduler_perf.png");
+}
+
+bool draw_statistical_data(statistics_t *cpu_info)
+{
+    int x = screenWidth / 2 - BLOCK_WIDTH;
+    int y = screenHeight / 2 - BLOCK_HEIGHT;
+    int distance = 70;
+    Rectangle rec = {x, y, BLOCK_WIDTH * 2, BLOCK_HEIGHT * 2};
+    float roundness = 0.2f;
+    int segments = 5;
+    int separate = 90;
+    int space_after_line = 65;
+    int space_after_text = 35;
+    int text_size = 20;
+    int shift = 20;
+    Color text_color = VIOLET;
+    Color inside = CLITERAL(Color){167, 203, 254, 255};
+    Color border = CLITERAL(Color){4, 79, 206, 255};
+    Color main_text = CLITERAL(Color){97, 15, 108, 255};
+
+    DrawRectangleRounded(rec, roundness, segments, inside);
+    DrawRectangleRoundedLines(rec, roundness, segments, border);
+
+    DrawText(TextFormat("CPU utilization = %.2f%%", cpu_info->cpu_utilization), x + shift, y + 30, text_size, main_text);
+
+    DrawText(TextFormat("Avg WTA = %.2f", cpu_info->avg_wta), x + shift, y + space_after_line, text_size, main_text);
+    DrawText(TextFormat("Avg Waiting = %.2f", cpu_info->avg_wt), x + shift, y + space_after_line + space_after_text, text_size, main_text);
+    DrawText(TextFormat("STD WTA = %.2f", cpu_info->std_wta), x + shift, y + space_after_line + 2 * space_after_text, text_size, main_text);
+    int buttonPressed = CustomButton((Rectangle){x + 25, y + 220, 250, 30}, "Continue");
+    return buttonPressed == 1;
 }
