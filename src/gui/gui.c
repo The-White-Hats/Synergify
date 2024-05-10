@@ -498,8 +498,12 @@ int is_file_empty(const char *filename) {
 
 void get_cnt_of_log()
 {
-    while(is_file_empty("/home/marwan/mywork/Synergify/scheduler.perf"));
-    FILE *file = fopen("/home/marwan/mywork/Synergify/scheduler.log", "r");
+    char absolute_path_perf[256], absolute_path_log[256];
+    getProjectPath(absolute_path_perf, "scheduler.perf");
+    getProjectPath(absolute_path_log, "scheduler.log");
+
+    while(is_file_empty(absolute_path_perf));
+    FILE *file = fopen(absolute_path_log, "r");
     if (file == NULL)
     {
         printf("Error opening file.\n");
@@ -517,7 +521,10 @@ void get_cnt_of_log()
 }
 void read_log_file()
 {
-    FILE *file = fopen("/home/marwan/mywork/Synergify/scheduler.log", "r");
+    char absolute_path_log[256];
+    getProjectPath(absolute_path_log, "scheduler.log");
+
+    FILE *file = fopen(absolute_path_log, "r");
     if (!file)
     {
         printf("Error opening file.\n");

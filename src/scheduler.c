@@ -3,6 +3,7 @@
 #include "gui/gui.h"
 #include "ds/fib_heap.h"
 #include "ds/queue.h"
+#include "buddy_memory.h"
 #include <math.h>
 
 //================================= SIGNAL HANDLERS =================================//
@@ -18,7 +19,10 @@ static PCB *getRunningProcess(scheduling_algo selected_algo);
 static PCB *popRunningProcess(scheduling_algo selected_algo);
 static short is_running_queue_empty(scheduling_algo selected_algo);
 static void generateProcesses();
+static void addToStateQueue(PCB *process);
+static void addToBlockQueue(PCB *process);
 static void addToReadyQueue(PCB *process);
+static void checkBlockQueue(int freed_memsize);
 SchedulerConfig *getSchedulerConfigInstance();
 
 //====================================== GUI ========================================//
@@ -33,7 +37,8 @@ static void addFinishLog(FILE *file, int currentTime, int processId,
 
 //====================== GLOBAL VARIABLES (scheduelr related) =======================//
 void *ready_queue = NULL;
-queue_t *queue = NULL;
+buddy_tree_t *buddy_system_tree = NULL;
+queue_t *queue = NULL, *block_queue = NULL;
 bool endScheduler = false;
 PCB *running_process = NULL;
 int selectedAlgorithmIndex;
@@ -95,7 +100,9 @@ int main(int argc, char *argv[])
     float prev_time_float = -.5;
 
     // Allocate the data structure depending on the selected algorithm
+    buddy_system_tree = create_buddy_tree();
     ready_queue = allocateDataStructure(schedulerConfig->selected_algorithm);
+    block_queue = create_queue();
     queue = create_queue();
 
     // Create task manager gui
@@ -181,6 +188,8 @@ static void initializeProcesses(int signum)
         process->priority = msgbuf.message.priority;
         process->start_time = -1;
         process->waiting_time = 0;
+        process->memsize = msgbuf.message.memsize;
+        process->ptr_mem = NULL;
         // TODO: allocate a new memory with size msgbuf.message.memsize and assign it to the process
 
         enqueue(queue, (void *)process);
@@ -231,10 +240,15 @@ static void terminateRunningProcess(int signum)
                  WTA);
 
     // TODO: Free allocate memory for the process from the buddy system.
+    int freed_memsize = running_process->memsize;
+    free_memory((buddy_node_t *)running_process->ptr_mem);
     free(running_process);
 
     running_process = NULL;
-    // printQueue(ready_queue);
+    checkBlockQueue(freed_memsize);
+
+    printf("block:\n");
+    queue_print(block_queue);
 
     waitpid(process_id, &stat_loc, 0);
     signal(SIGALRM, terminateRunningProcess);
@@ -269,7 +283,9 @@ static void clearResources(int signum)
         queue_free((queue_t *)ready_queue, true);
     else
         fib_heap_free((fib_heap_t *)ready_queue, 1);
-    queue_free((queue_t *)queue, true);
+    queue_free(queue, true);
+    queue_free(block_queue, true);
+    buddy_free(buddy_system_tree, true);
 
     // Close opened files
     fclose(logFile);
@@ -397,18 +413,43 @@ static void generateProcesses()
         usleep(10 * 1000);
         process->fork_id = pid;
         process->state = NEWBIE;
-        addToReadyQueue(process);
+        addToStateQueue(process);
     }
     for (int i = 1; i < 5; i++)
         free(args[i]);
 }
 
 /**
+ * addToBlockedQueue - Adds a process to the block queue.
+ *
+ * @param process: Pointer to the process to be added.
+ */
+static void addToStateQueue(PCB *process)
+{
+    total_processes++;
+    buddy_node_t* buddy_node = allocate_memory(process->memsize, buddy_system_tree);
+    
+    if (buddy_node == NULL) return addToBlockQueue(process);
+    
+    process->ptr_mem = (void *)buddy_node;
+    addToReadyQueue(process);
+}
+
+/**
+ * addToBlockedQueue - Adds a process to the block queue.
+ *
+ * @param process: Pointer to the process to be added.
+ */
+static void addToBlockQueue(PCB *process)
+{
+    process->state = BLOCKED;
+    enqueue(block_queue, (void *)process);
+}
+
+/**
  * addToReadyQueue - Adds a process to the ready queue based on the scheduling algorithm.
  *
  * @param process: Pointer to the process to be added.
- *
- * Description: Adds a process to the ready queue based on the selected scheduling algorithm.
  */
 static void addToReadyQueue(PCB *process)
 {
@@ -426,8 +467,56 @@ static void addToReadyQueue(PCB *process)
     case HPF:
         fib_heap_insert((fib_heap_t *)ready_queue, (void *)process, process->priority);
     }
+}
 
-    total_processes++;
+static void checkBlockQueue(int freed_memsize)
+{
+    printf("before:\n");
+    queue_print(block_queue);
+    queue_node_t *dummy, *parent, *delete, *iterator;
+    bool isHead;
+
+    if (is_queue_empty(block_queue))    return;
+
+    iterator = block_queue->head;
+    dummy = malloc(sizeof(queue_node_t));
+    parent = dummy;
+    parent->next = iterator;
+
+    while (freed_memsize && iterator)
+    {
+        PCB *process = (PCB *)iterator->data;
+        int memsize = process->memsize;
+        if (freed_memsize >= memsize) {
+            // Try to allocate memory
+            process->ptr_mem = (void *)allocate_memory(memsize, buddy_system_tree);
+            if (process->ptr_mem == NULL) {
+                perror("freed block in buddy tree\n");
+                return;
+            }
+
+            process->state = NEWBIE;
+            addToReadyQueue(process);
+
+            // Remove allocated block size from the free memory
+            freed_memsize -= pow(2, ceil(log2(memsize)));
+            isHead = (iterator == block_queue->head);
+            iterator = iterator->next;
+            if (isHead) {
+                printf("Blocked process is head!\n");
+                block_queue->head = iterator;
+                if (!iterator) block_queue->tail = NULL;
+                queue_print(block_queue);
+            }
+            free(parent->next);
+            parent->next = iterator;
+            continue;
+        }
+        parent = iterator;
+        iterator = iterator->next;
+    }
+
+    free(dummy);
 }
 
 /**
@@ -515,4 +604,21 @@ static void addFinishLog(FILE *file, int currentTime, int processId,
 {
     fprintf(file, "At time %d process %d %s arr %d total %d remain %d wait %d TA %d WTA %.2f\n",
             currentTime, processId, state, arrivalTime, totalRuntime, 0, waitingTime, TA, WTA);
+}
+
+
+void queue_print(queue_t *my_queue)
+{
+	if (!my_queue->head) return;
+
+	queue_node_t *temp = my_queue->head;
+	while (temp)
+	{
+        PCB *process = temp->data;
+		printf("(%d)", process->file_id);
+		temp = temp->next;
+        if (temp)
+            printf("->");
+	}
+    printf("\n");
 }

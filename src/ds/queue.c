@@ -3,35 +3,6 @@
 #include "queue.h"
 
 /**
- * struct process_info_queue_node_s - Node structure for a process information queue
- * @data: Pointer to the process information stored in the node
- * @next: Pointer to the next node in the queue
- *
- * Description: Node structure for a singly linked list representing a queue of process information.
- */
-typedef struct queue_node_s queue_node_t;
-typedef struct queue_node_s
-{
-	void *data;
-	queue_node_t *next;
-} queue_node_t;
-
-/**
- * struct process_info_queue_s - Structure for managing a queue of process information
- * @head: Pointer to the first node in the queue
- * @tail: Pointer to the last node in the queue
- * @size: Number of elements in the queue
- *
- * Description: Structure for managing a queue of process information using a singly linked list implementation.
- */
-typedef struct queue_s
-{
-	queue_node_t *head;
-	queue_node_t *tail;
-	int size;
-} queue_t;
-
-/**
  * create_queue - Creates a new empty process information queue
  *
  * @return A pointer to the newly created process information queue, or NULL if memory allocation fails

@@ -83,6 +83,7 @@ typedef enum
 {
     RUNNING = 1,
     READY,
+    BLOCKED,
     NEWBIE,
 } process_state;
 
@@ -109,6 +110,8 @@ typedef struct PCB_s
     int start_time;
     int last_stop_time;
     int waiting_time;
+    int memsize;
+    void *ptr_mem;
 } PCB;
 
 /**
@@ -136,6 +139,14 @@ typedef struct
  * @file_name: name of the file to append.
  */
 void getAbsolutePath(char *const absolute_path, const char *const file_name);
+
+/**
+ * getProjectPath - takes a file_name and appends it to the project path.
+ *
+ * @absolute_path: pointer to the buffer where the absolute path will be stored.
+ * @file_name: name of the file to append.
+ */
+void getProjectPath(char *const absolute_path, const char *const file_name);
 
 //===========================================Process=============================================//
 

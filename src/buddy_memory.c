@@ -45,6 +45,8 @@ void free_memory(buddy_node_t *block)
   {
     // free the allocated memory only not the block and return
     free(block->allocated_memory);
+    block->allocated_memory = NULL;
+    block->is_free = true;
     return;
   }
 
@@ -151,4 +153,26 @@ void print_tree(buddy_node_t *root, int level)
   printf(!root->allocated_memory ? "fr\n" : "oc\n");
   print_tree(root->left, level + 1);
   print_tree(root->right, level + 1);
+}
+
+static void buddy_tree_free(buddy_node_t *root, bool deleteData)
+{
+  if (root == NULL) return;
+  buddy_tree_free(root->left, deleteData);
+  buddy_tree_free(root->right, deleteData);
+
+  free(root->allocated_memory);
+  free(root);
+}
+
+/**
+ * buddy_free - Frees all memory allocated for the queue elements
+ * @param buddy_tree: A pointer to the buddy tree
+ * @param deleteData: Determine if the data is freed or not
+ */
+void buddy_free(buddy_tree_t *buddy_tree, bool deleteData)
+{
+  if (buddy_tree == NULL) return;
+  buddy_tree_free(buddy_tree->root, deleteData);
+  free(buddy_tree);
 }

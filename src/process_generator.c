@@ -97,7 +97,7 @@ int main(int argc, char *argv[]) // algorithm, quantum, file_path
 void clearResources(int signum)
 {
     if (signum != 0)
-        kill(scheduler_id, SIGINT);
+        kill(scheduler_id, SIGKILL);
     msgctl(msgq_id, IPC_RMID, (struct msqid_ds *)0);
     exit(0);
 }
