@@ -39,6 +39,7 @@ typedef struct process_info_s
     int arrival;
     int runtime;
     int priority;
+    int memsize;
 } process_info_t;
 
 /**
@@ -48,9 +49,10 @@ typedef struct process_info_s
  * @mytype: message header.
  * @message: the actual message sent.
  */
-typedef struct msgbuf_s {
-  long mytype;
-  process_info_t message;
+typedef struct msgbuf_s
+{
+    long mytype;
+    process_info_t message;
 } msgbuf_t;
 
 /**
@@ -145,7 +147,7 @@ void getAbsolutePath(char *const absolute_path, const char *const file_name);
  *
  * Description: This function returns a pointer to the singleton instance of the SchedulerConfig
  *              structure, ensuring that only one instance exists throughout the program.
- */ 
+ */
 SchedulerConfig *getSchedulerConfigInstance();
 
 /**
@@ -201,4 +203,4 @@ void scheduleHPF(void *head);
  *              If the new front process is -1, it means there's no new front process to switch to.
  */
 void contentSwitch(PCB *new_front, PCB *old_front, int currentTime, FILE *file);
-//void printQueue(pqueue_t** head);
+// void printQueue(pqueue_t** head);

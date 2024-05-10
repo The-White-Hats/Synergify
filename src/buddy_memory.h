@@ -4,12 +4,9 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <math.h>
+#include <stdbool.h>
 
 #define MAX_SIZE 1024
-#define true 1
-#define false 0
-
-typedef short bool;
 
 /**
  * struct buddy_node_s - A structure for holding buddy tree nodes information.
