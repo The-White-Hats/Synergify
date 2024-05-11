@@ -96,7 +96,7 @@ buddy_node_t *create_buddy_node(uint8_t order, int i, int j);
  * @param order: the order value.
  * @return a pointer to the allocated buddy_node.
  */
-buddy_node_t *insert_buddy_node(buddy_node_t *node, uint8_t order);
+void insert_buddy_node(buddy_node_t *node, buddy_node_t **target, uint8_t order);
 
 /**
  * create_children - takes a node and creates and initilizes its 2 children nodes.
@@ -110,3 +110,10 @@ void create_children(buddy_node_t *node, int i, int j);
  * @param deleteData: Determine if the data is freed or not
  */
 void buddy_free(buddy_tree_t *buddy_tree, bool deleteData);
+
+/**
+ * check_and_split - takes a block and splits it until it's order is equal to a certain order.
+ * @param target: pointer to pointer to the block.
+ * @param order: the order value to check against.
+ */
+void check_and_split(buddy_node_t **target, uint8_t order);
