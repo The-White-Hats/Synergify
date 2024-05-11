@@ -5,13 +5,14 @@
  * It is not a real part of operating system!
  */
 
-#include "headers.h"
+#include "clk.h"
 
 int shmid;
 
 /* Clear the resources before exit */
 void cleanup(int signum)
 {
+    (void)signum;
     shmctl(shmid, IPC_RMID, NULL);
     printf("Clock terminating!\n");
     exit(0);
@@ -20,6 +21,8 @@ void cleanup(int signum)
 /* This file represents the system clock for ease of calculations */
 int main(int argc, char * argv[])
 {
+    (void)argc;
+    (void)argv;
     printf("Clock starting\n");
     signal(SIGINT, cleanup);
     int clk = 0;
@@ -30,7 +33,7 @@ int main(int argc, char * argv[])
         perror("Error in creating shm!");
         exit(-1);
     }
-    int * shmaddr = (int *) shmat(shmid, (void *)0, 0);
+    float * shmaddr = (float *) shmat(shmid, (void *)0, 0);
     if ((long)shmaddr == -1)
     {
         perror("Error in attaching the shm in clock!");
@@ -39,7 +42,7 @@ int main(int argc, char * argv[])
     *shmaddr = clk; /* initialize shared memory */
     while (1)
     {
-        sleep(1);
-        (*shmaddr)++;
+        usleep(500*1000);
+        (*shmaddr)+=.5;
     }
 }

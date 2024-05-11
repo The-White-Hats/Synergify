@@ -1,2 +1,13 @@
+# folders
 .vscode
+
+# executable
 *.out
+
+# files
+processes.txt
+
+# log files
+*.log
+*.perf
+*.png
