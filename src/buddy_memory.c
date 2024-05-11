@@ -25,15 +25,38 @@ buddy_node_t *allocate_memory(int memory_size, buddy_tree_t *buddy_tree)
     return NULL;
   }
 
-  buddy_node_t *node = insert_buddy_node(buddy_tree->root, order);
+  buddy_node_t **target = (buddy_node_t **)malloc(sizeof(buddy_node_t *));
+  (*target) = NULL;
 
-  if (!node)
+  insert_buddy_node(buddy_tree->root, target, order);
+
+  if (!(*target))
+  {
+    free(target);
     return NULL;
+  }
 
-  node->is_free = false;
-  node->allocated_memory = malloc(pow(2, node->order));
+  check_and_split(target, order);
 
-  return node;
+  buddy_node_t *ptr = (*target);
+  free(target);
+
+  ptr->is_free = false;
+  ptr->allocated_memory = malloc(pow(2, ptr->order));
+
+  return ptr;
+}
+
+void check_and_split(buddy_node_t **target, uint8_t order)
+{
+  if (!target || !(*target))
+    return;
+
+  while ((*target) && (*target)->order > order)
+  {
+    create_children((*target), (*target)->i, (*target)->j);
+    (*target) = (*target)->left;
+  }
 }
 
 void free_memory(buddy_node_t *block)
@@ -116,35 +139,19 @@ void create_children(buddy_node_t *node, int i, int j)
   node->is_free = false;
 }
 
-buddy_node_t *insert_buddy_node(buddy_node_t *node, uint8_t order)
+void insert_buddy_node(buddy_node_t *node, buddy_node_t **target, uint8_t order)
 {
   if (!node)
-    return NULL;
+    return;
 
-  if (node->order == order)
+  if (node->order >= order && node->is_free)
   {
-    if (node->is_free)
-      return node;
-    else
-      return NULL;
+    if (!(*target) || (*target)->order > node->order)
+      (*target) = node;
   }
 
-  if (!node->left && !node->right)
-  {
-    if (!node->is_free) // Occupied node
-      return NULL;
-
-    create_children(node, node->i, node->j);
-  }
-
-  buddy_node_t *target_node = NULL;
-
-  target_node = insert_buddy_node(node->left, order);
-  if (target_node)
-    return target_node;
-
-  target_node = insert_buddy_node(node->right, order);
-  return target_node;
+  insert_buddy_node(node->left, target, order);
+  insert_buddy_node(node->right, target, order);
 }
 
 void print_tree(buddy_node_t *root, int level)
