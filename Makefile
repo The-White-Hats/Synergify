@@ -19,4 +19,4 @@ all: clean build
 
 run:
 	#./bin/test_generator.out
-	./bin/synergify.out 1
+	./bin/synergify.out 

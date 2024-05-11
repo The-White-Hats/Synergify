@@ -60,8 +60,7 @@ int quantum = 1; // Initial value
 int totalTime = 5;
 int number_of_logs = 0;
 int max_height = 0;
-char filePath[512] = "/home/marwan/mywork/Synergify/bin/processes.txt"; // Buffer to store the file path
-int test_num;
+char filePath[512] = {0}; // Buffer to store the file path
 
 //------------------------------------------------------------------------------------------------------------------------
 
@@ -96,7 +95,6 @@ void draw_block(int x, int y, process_block_t process);
 
 int main(int argc, char *argv[])
 {
-    test_num = atoi(argv[1]);
     SetConfigFlags(FLAG_MSAA_4X_HINT);
     InitWindow(screenWidth, screenHeight, "Process Scheduler Simulation");
     SetTargetFPS(60);
@@ -467,12 +465,12 @@ static bool inputScreen()
         DrawText("Quantum", screenWidth / 2 - 110, height + 86, 15, MAGENTA); // Change the font size and color as needed
         GuiSpinner((Rectangle){screenWidth / 2 - 40, height + 80, 180, 30}, "", &quantum, 1, 10000, false);
     }
-    // if ((buttonPressed || once))
-    // {
-    //     DrawText("Please select a file to continue", screenWidth / 2 - 60, height + ((algoChoice == 2) ? 225 : 150), 10, WHITE); // Change the font size and color as needed
-    //     once = true;
-    //     return false;
-    // }
+    if ((buttonPressed || once) && fp == NULL)
+    {
+        DrawText("Please select a file to continue", screenWidth / 2 - 60, height + ((algoChoice == 2) ? 225 : 150), 10, WHITE); // Change the font size and color as needed
+        once = true;
+        return false;
+    }
     return buttonPressed;
 }
 void read_input_file()
@@ -717,14 +715,14 @@ void ouput_image(Texture2D background)
         draw_image(50, 50);
         EndMode2D();
         EndDrawing();
-        TakeScreenshot(TextFormat("tc%d_log_%d.png", test_num, idx++));
+        TakeScreenshot(TextFormat("Scheduler_log_%d.png", idx++));
     }
     BeginDrawing();
     ClearBackground(RAYWHITE);
     DrawTexture(background, 0, 0, WHITE);
     draw_statistical_data(cpu_info);
     EndDrawing();
-    TakeScreenshot(TextFormat("tc%d_perf.png", test_num));
+    TakeScreenshot("Scheduler_perf.png");
 }
 
 bool draw_statistical_data(statistics_t *cpu_info)
