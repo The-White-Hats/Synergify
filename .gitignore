@@ -11,3 +11,6 @@ processes.txt
 *.log
 *.perf
 *.png
+
+# Ignore PNG files except in the assets folder
+!assets/*.png
